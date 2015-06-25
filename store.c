@@ -1,0 +1,217 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <db.h>
+#include <sys/stat.h>
+#include <errno.h>
+
+#include "data.h"
+
+static char* get_env_name(char *hashfile_name){
+    /* split hashfile_name */
+    char *token; 
+    char *pch = strtok(hashfile_name, "/");
+    while(pch != NULL){
+        token = pch;
+        pch = strtok(NULL, "/");
+    }
+    token = strtok(token, ".");
+    return token;
+}
+
+static DB* dbp;
+
+struct {
+    DB_ENV *env;
+    DB* chunk_dbp;
+    DB* container_dbp;
+    DB* region_dbp;
+} ddb;
+
+int open_database(char *hashfile_name){
+    char buf[100];
+    strncpy(buf, hashfile_name, 99);
+
+    char *env_name = get_env_name(buf);
+
+    /* create and open env */
+    int ret = db_env_create(&ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create ENV: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    ret = mkdir(env_name, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create ENV directory: %s\n", strerror(errno));
+        /*return ret;*/
+    }
+
+    ret = ddb.env->open(ddb.env, env_name, DB_CREATE|DB_INIT_MPOOL, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open ENV: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    /* create db */
+    ret = db_create(&ddb.chunk_dbp, ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create chunk DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    ret = db_create(&ddb.container_dbp, ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create container DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    ret = db_create(&ddb.region_dbp, ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create region DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    /* open db */ 
+    /*ret = dbp->open(dbp, NULL, dbname, NULL, DB_BTREE, DB_CREATE, 0);*/
+    ret = ddb.chunk_dbp->open(ddb.chunk_dbp, NULL, "chunk.db", NULL, DB_HASH, DB_CREATE, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open chunk DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    DB_HASH_STAT *sp;
+    ret = ddb.chunk_dbp->stat(ddb.chunk_dbp, NULL, &sp, 0);
+    printf("number of key: %d\n", sp->hash_ndata);
+
+    ret = ddb.container_dbp->open(ddb.container_dbp, NULL, "container.db", NULL, DB_HASH, DB_CREATE, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open container DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    ret = ddb.region_dbp->open(ddb.region_dbp, NULL, "region.db", NULL, DB_HASH, DB_CREATE, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open region DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+    return 0;
+}
+
+void close_database(){
+    ddb.chunk_dbp->close(ddb.chunk_dbp, 0);
+    ddb.container_dbp->close(ddb.container_dbp, 0);
+    ddb.region_dbp->close(ddb.region_dbp, 0);
+
+    ddb.env->close(ddb.env, 0);
+}
+
+static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
+    
+    value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
+        sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->lnum) +
+        r->lnum * sizeof(int);
+
+    value->data = malloc(value->size);
+
+    int off = 0;
+    memcpy(value->data + off, &r->rcount, sizeof(r->rcount));
+    off += sizeof(r->rcount);
+    memcpy(value->data + off, &r->cid, sizeof(r->cid));
+    off += sizeof(r->cid);
+    memcpy(value->data + off, &r->rid, sizeof(r->rid));
+    off += sizeof(r->rid);
+    memcpy(value->data + off, &r->csize, sizeof(r->csize));
+    off += sizeof(r->csize);
+    memcpy(value->data + off, &r->cratio, sizeof(r->cratio));
+    off += sizeof(r->cratio);
+    memcpy(value->data + off, &r->lnum, sizeof(r->lnum));
+    off += sizeof(r->lnum);
+    int i = 0;
+    for(; i < r->lnum; i++){
+        memcpy(value->data + off, &r->llist[i], sizeof(int));
+        off += sizeof(int);
+    }
+    assert(off == value->size);
+}
+
+static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
+
+    int len = 0;
+    memcpy(&r->rcount, value->data, sizeof(r->rcount));
+    len += sizeof(r->rcount);
+    memcpy(&r->cid, value->data + len, sizeof(r->cid));
+    len += sizeof(r->cid);
+    memcpy(&r->rid, value->data + len, sizeof(r->rid));
+    len += sizeof(r->rid);
+    memcpy(&r->csize, value->data + len, sizeof(r->csize));
+    len += sizeof(r->csize);
+    memcpy(&r->cratio, value->data + len, sizeof(r->cratio));
+    len += sizeof(r->cratio);
+    memcpy(&r->lnum, value->data + len, sizeof(r->lnum));
+    len += sizeof(r->lnum);
+    if(r->llist == NULL){
+        r->lsize = r->lnum + 1;
+        r->llist = malloc(sizeof(int)*r->lsize);
+    }else if(r->lsize < r->lnum){
+        r->lsize = r->lnum + 1;
+        r->llist = realloc(r->llist, sizeof(int)*r->lsize);
+    }
+    int i = 0;
+    for(; i < r->lnum; i++){
+        memcpy(&r->llist[i], value->data + len, sizeof(int));
+        len += sizeof(int);
+    }
+    assert(len == value->size);
+}
+
+/* 
+ * Search hash in database.
+ * chunk_rec returns a pointer if exists; otherwise, returns NULL
+ * */
+int search_chunk(struct chunk_rec *crec){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = crec->hash;
+    key.size = crec->hashlen;
+
+    value.data = NULL;
+    value.size = 0;
+    value.flags = DB_DBT_MALLOC;
+
+    int ret = ddb.chunk_dbp->get(ddb.chunk_dbp, NULL, &key, &value, 0);
+    if(ret == 0){
+        /* success */
+        unserial_chunk_rec(&value, crec);
+        /*fprintf(stdout, "exist\n");*/
+    }else if(ret == DB_NOTFOUND){
+        assert(value.data == NULL);
+        reset_chunk_rec(crec);
+        /*fprintf(stdout, "Not exist\n");*/
+    }else{
+        fprintf(stderr, "Cannot get value: %s\n", db_strerror(ret));
+    }
+
+    return ret;
+}
+
+int update_chunk(struct chunk_rec *crec){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = crec->hash;
+    key.size = crec->hashlen;
+
+    serial_chunk_rec(crec, &value);
+    int ret = ddb.chunk_dbp->put(ddb.chunk_dbp, NULL, &key, &value, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+    }
+    free(value.data);
+    return ret;
+}
+
