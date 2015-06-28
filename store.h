@@ -8,4 +8,8 @@ void close_database();
 int search_chunk(struct chunk_rec *crec);
 int update_chunk(struct chunk_rec *crec);
 
+int update_container(struct container_rec* r);
+int update_region(struct region_rec* r);
+int update_file(struct file_rec* r);
+
 #endif

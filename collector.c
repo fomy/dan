@@ -60,6 +60,15 @@ static int read_hashfile(char *hashfile_name)
     struct chunk_rec chunk;
     memset(&chunk, 0 ,sizeof(chunk));
 
+    struct container_rec container;
+    memset(&container, 0 ,sizeof(container));
+
+    struct region_rec region;
+    memset(&region, 0 ,sizeof(region));
+
+    struct file_rec file;
+    memset(&file, 0 ,sizeof(file));
+
     handle = hashfile_open(hashfile_name);
     if (!handle) {
         fprintf(stderr, "Error opening hash file: %d!", errno);
@@ -146,7 +155,7 @@ static int read_hashfile(char *hashfile_name)
 
 	hashfile_close(handle);
 
-    printf("%d duplicate chunks out of %d\n", dcount, chunk_count);
+    printf("%d duplicate chunks out of %" PRId64"\n", dcount, chunk_count);
 	return 0;
 }
 

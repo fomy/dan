@@ -49,14 +49,30 @@ void free_container_rec(struct container_rec* r){
     free(r);
 }
 
+int container_full(struct container_rec* r, int csize){
+    if(r->psize + csize > CONTAINER_SIZE){
+        return 1;
+    }
+    return 0;
+}
+
 struct region_rec* create_region_rec(){
     struct region_rec* r = malloc(sizeof(struct region_rec));
 
     r->rid = -1;
     r->lsize = 0;
     r->psize = 0;
+
+    return r;
 }
 
 void free_region_rec(struct region_rec* r){
     free(r);
+}
+
+int region_full(struct region_rec* r, int csize){
+    if(r->psize + csize > COMPRESSION_REGION_SIZE){
+        return 1;
+    }
+    return 0;
 }

@@ -27,11 +27,15 @@ struct {
     DB* chunk_dbp;
     DB* container_dbp;
     DB* region_dbp;
+    DB* file_dbp;
+    DBC* cursorp;
 } ddb;
 
 int open_database(char *hashfile_name){
     char buf[100];
     strncpy(buf, hashfile_name, 99);
+
+    ddb.cursorp = NULL;
 
     char *env_name = get_env_name(buf);
 
@@ -73,6 +77,12 @@ int open_database(char *hashfile_name){
         return ret;
     }
 
+    ret = db_create(&ddb.file_dbp, ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
     /* open db */ 
     /*ret = dbp->open(dbp, NULL, dbname, NULL, DB_BTREE, DB_CREATE, 0);*/
     ret = ddb.chunk_dbp->open(ddb.chunk_dbp, NULL, "chunk.db", NULL, DB_HASH, DB_CREATE, 0);
@@ -94,6 +104,12 @@ int open_database(char *hashfile_name){
     ret = ddb.region_dbp->open(ddb.region_dbp, NULL, "region.db", NULL, DB_HASH, DB_CREATE, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot open region DB: %s\n", db_strerror(ret));
+        return ret;
+    }
+
+    ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, DB_CREATE, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));
         return ret;
     }
     return 0;
@@ -214,4 +230,117 @@ int update_chunk(struct chunk_rec *crec){
     free(value.data);
     return ret;
 }
+
+
+int update_container(struct container_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->cid;
+    key.size = sizeof(r->cid);
+
+    value.data = r;
+    value.size = sizeof(*r);
+
+    int ret = ddb.container_dbp->put(ddb.container_dbp, NULL, &key, &value, 0);
+
+    if(ret != 0){
+        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+    }
+    return ret;
+}
+
+int update_region(struct region_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->rid;
+    key.size = sizeof(r->rid);
+
+    value.data = r;
+    value.size = sizeof(*r);
+
+    int ret = ddb.container_dbp->put(ddb.region_dbp, NULL, &key, &value, 0);
+
+    if(ret != 0){
+        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+    }
+
+    return ret;
+}
+
+int update_file(struct file_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->fid;
+    key.size = sizeof(r->fid);
+
+    value.data = r;
+    value.size = sizeof(*r);
+
+    int ret = ddb.file_dbp->put(ddb.file_dbp, NULL, &key, &value, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+    }
+
+    return ret;
+}
+
+int init_iterator(char *type){
+    int ret;
+    if(strcmp(type, "CHUNK") == 0){
+        ret = ddb.chunk_dbp->cursor(ddb.chunk_dbp, NULL, &ddb.cursorp, 0);
+    }else if(strcmp(type, "CONTAINER") == 0){
+        ret = ddb.container_dbp->cursor(ddb.container_dbp, NULL, &ddb.cursorp, 0);
+    }else if(strcmp(type, "REGION") == 0){
+        ret = ddb.region_dbp->cursor(ddb.region_dbp, NULL, &ddb.cursorp, 0);
+    }else if(strcmp(type, "FILE") == 0){
+        ret = ddb.file_dbp->cursor(ddb.file_dbp, NULL, &ddb.cursorp, 0);
+    }else{
+        ret = -1;
+        fprintf(stderr, "invalid iterator type!\n");
+    }
+    return ret;
+}
+
+int iterate_chunk(char* hash, int *hashlen, struct chunk_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, 0);
+    if(ret != 0){
+        fprintf(stderr, "no more chunk\n");
+        return ret;
+    }
+    if(*hashlen < key.size)
+        fprintf(stderr, "hashlen %d < key.size %d\n", *hashlen, key.size);
+        return -1;
+
+    memcpy(hash, key.data, key.size);
+    *hashlen = key.size;
+
+    unserial_chunk_rec(&value, r);
+
+    return ret;
+}
+
+int iterate_container(struct container_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, 0);
+    if(ret != 0){
+        fprintf(stderr, "no more container\n");
+        return ret;
+    }
+
+    return ret;
+}
+
 

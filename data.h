@@ -45,13 +45,23 @@ struct region_rec{
     int psize;
 };
 
+struct file_rec{
+    int fid;
+    int fsize;
+    /* chunk number */
+    int cnum;
+};
+
 void free_chunk_rec(struct chunk_rec *r);
 struct chunk_rec* create_chunk_rec();
+void reset_chunk_rec(struct chunk_rec *r);
 
 struct container_rec* create_container_rec();
 void free_container_rec(struct container_rec* r);
+int container_full(struct container_rec* r, int csize);
 
 struct region_rec* create_region_rec();
 void free_region_rec(struct region_rec* r);
+int region_full(struct region_rec* r, int csize);
 
 #endif
