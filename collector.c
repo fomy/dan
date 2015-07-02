@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-    int ret = open_database(argv[1]);
+    int ret = create_database(argv[1]);
     if(ret != 0){
         return ret;
     }

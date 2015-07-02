@@ -31,30 +31,12 @@ struct {
     DBC* cursorp;
 } ddb;
 
-int open_database(char *hashfile_name){
-    char buf[100];
-    strncpy(buf, hashfile_name, 99);
-
+static int init_ddb(){
     ddb.cursorp = NULL;
-
-    char *env_name = get_env_name(buf);
-
     /* create and open env */
     int ret = db_env_create(&ddb.env, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot create ENV: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = mkdir(env_name, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create ENV directory: %s\n", strerror(errno));
-        /*return ret;*/
-    }
-
-    ret = ddb.env->open(ddb.env, env_name, DB_CREATE|DB_INIT_MPOOL, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open ENV: %s\n", db_strerror(ret));
         return ret;
     }
 
@@ -77,42 +59,77 @@ int open_database(char *hashfile_name){
         return ret;
     }
 
-    ret = db_create(&ddb.file_dbp, ddb.env, 0);
+    /*ret = db_create(&ddb.file_dbp, ddb.env, 0);*/
+    /*if(ret != 0){*/
+        /*fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));*/
+        /*return ret;*/
+    /*}*/
+    return 0;
+}
+
+static int open_ddb(char* env_name, int flags){
+    int ret = ddb.env->open(ddb.env, env_name, flags|DB_INIT_MPOOL, 0);
     if(ret != 0){
-        fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));
+        fprintf(stderr, "Cannot open ENV: %s\n", db_strerror(ret));
         return ret;
     }
 
     /* open db */ 
-    /*ret = dbp->open(dbp, NULL, dbname, NULL, DB_BTREE, DB_CREATE, 0);*/
-    ret = ddb.chunk_dbp->open(ddb.chunk_dbp, NULL, "chunk.db", NULL, DB_HASH, DB_CREATE, 0);
+    ret = ddb.chunk_dbp->open(ddb.chunk_dbp, NULL, "chunk.db", NULL, DB_HASH, flags, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot open chunk DB: %s\n", db_strerror(ret));
         return ret;
     }
 
-    DB_HASH_STAT *sp;
-    ret = ddb.chunk_dbp->stat(ddb.chunk_dbp, NULL, &sp, 0);
-    printf("number of key: %d\n", sp->hash_ndata);
-
-    ret = ddb.container_dbp->open(ddb.container_dbp, NULL, "container.db", NULL, DB_HASH, DB_CREATE, 0);
+    ret = ddb.container_dbp->open(ddb.container_dbp, NULL, "container.db", NULL, DB_HASH, flags, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot open container DB: %s\n", db_strerror(ret));
         return ret;
     }
 
-    ret = ddb.region_dbp->open(ddb.region_dbp, NULL, "region.db", NULL, DB_HASH, DB_CREATE, 0);
+    ret = ddb.region_dbp->open(ddb.region_dbp, NULL, "region.db", NULL, DB_HASH, flags, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot open region DB: %s\n", db_strerror(ret));
         return ret;
     }
 
-    ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, DB_CREATE, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));
-        return ret;
-    }
+    /*ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, flags, 0);*/
+    /*if(ret != 0){*/
+        /*fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));*/
+        /*return ret;*/
+    /*}*/
     return 0;
+}
+
+int open_database(char* hashfile_name){
+
+    int ret = init_ddb();
+
+    char buf[100];
+    strncpy(buf, hashfile_name, 99);
+    char *env_name = get_env_name(buf);
+
+    ret = open_ddb(env_name, 0);
+
+    return ret;
+}
+
+int create_database(char *hashfile_name){
+
+    int ret = init_ddb();
+
+    char buf[100];
+    strncpy(buf, hashfile_name, 99);
+    char *env_name = get_env_name(buf);
+
+    ret = mkdir(env_name, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create ENV directory: %s\n", strerror(errno));
+        /*return ret;*/
+    }
+
+    ret = open_ddb(env_name, DB_CREATE);
+    return ret;
 }
 
 void close_database(){
@@ -307,22 +324,19 @@ int init_iterator(char *type){
     return ret;
 }
 
-int iterate_chunk(char* hash, int *hashlen, struct chunk_rec* r){
+int iterate_chunk(struct chunk_rec* r){
     DBT key, value;
     memset(&key, 0, sizeof(DBT));
     memset(&value, 0, sizeof(DBT));
 
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, 0);
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
     if(ret != 0){
         fprintf(stderr, "no more chunk\n");
         return ret;
     }
-    if(*hashlen < key.size)
-        fprintf(stderr, "hashlen %d < key.size %d\n", *hashlen, key.size);
-        return -1;
 
-    memcpy(hash, key.data, key.size);
-    *hashlen = key.size;
+    memcpy(r->hash, key.data, key.size);
+    r->hashlen = key.size;
 
     unserial_chunk_rec(&value, r);
 
@@ -334,7 +348,7 @@ int iterate_container(struct container_rec* r){
     memset(&key, 0, sizeof(DBT));
     memset(&value, 0, sizeof(DBT));
 
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, 0);
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
     if(ret != 0){
         fprintf(stderr, "no more container\n");
         return ret;

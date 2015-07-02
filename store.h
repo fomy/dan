@@ -3,6 +3,7 @@
 
 #include "data.h"
 
+int create_database(char *hashfile_name);
 int open_database(char *hashfile_name);
 void close_database();
 int search_chunk(struct chunk_rec *crec);
@@ -11,5 +12,8 @@ int update_chunk(struct chunk_rec *crec);
 int update_container(struct container_rec* r);
 int update_region(struct region_rec* r);
 int update_file(struct file_rec* r);
+
+int init_iterator(char *type);
+int iterate_chunk(struct chunk_rec* r);
 
 #endif
