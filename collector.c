@@ -138,7 +138,7 @@ static int read_hashfile(char *hashfile_name)
             if(ret == 0)
                 dcount++;
             if(chunk.lsize <= chunk.rcount){
-                chunk.lsize = chunk.lrcount + 1;
+                chunk.lsize = chunk.rcount + 1;
                 chunk.llist = realloc(chunk.llist, chunk.lsize*sizeof(int));
             }
             chunk.llist[chunk.rcount] = loc;

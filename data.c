@@ -2,7 +2,7 @@
 #include "data.h"
 
 /* memset(r, 0, sizeof(*r)) */
-struct void init_chunk_rec(struct chunk_rec *r){
+void init_chunk_rec(struct chunk_rec *r){
 
     r->hashlen = 0;
     r->rcount = 0;
@@ -21,10 +21,9 @@ void reset_chunk_rec(struct chunk_rec *r){
     r->rid = 0;
     r->csize = 0;
     r->cratio = 0;
-    r->lnum = 0;
 }
 
-struct void init_container_rec(struct container_rec *r){
+void init_container_rec(struct container_rec *r){
 
     r->cid = -1;
     r->lsize = 0;
@@ -38,7 +37,7 @@ int container_full(struct container_rec* r, int csize){
     return 0;
 }
 
-struct void init_region_rec(struct region_rec *r){
+void init_region_rec(struct region_rec *r){
 
     r->rid = -1;
     r->lsize = 0;
