@@ -59,11 +59,11 @@ static int init_ddb(){
         return ret;
     }
 
-    /*ret = db_create(&ddb.file_dbp, ddb.env, 0);*/
-    /*if(ret != 0){*/
-        /*fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));*/
-        /*return ret;*/
-    /*}*/
+    ret = db_create(&ddb.file_dbp, ddb.env, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));
+        return ret;
+    }
     return 0;
 }
 
@@ -93,11 +93,11 @@ static int open_ddb(char* env_name, int flags){
         return ret;
     }
 
-    /*ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, flags, 0);*/
-    /*if(ret != 0){*/
-        /*fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));*/
-        /*return ret;*/
-    /*}*/
+    ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, flags, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));
+        return ret;
+    }
     return 0;
 }
 
@@ -136,6 +136,7 @@ void close_database(){
     ddb.chunk_dbp->close(ddb.chunk_dbp, 0);
     ddb.container_dbp->close(ddb.container_dbp, 0);
     ddb.region_dbp->close(ddb.region_dbp, 0);
+    ddb.file_dbp->close(ddb.file_dbp, 0);
 
     ddb.env->close(ddb.env, 0);
 }
@@ -143,8 +144,7 @@ void close_database(){
 static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     
     value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
-        sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->lnum) +
-        r->lnum * sizeof(int);
+        sizeof(r->csize) + sizeof(r->cratio) + r->rcount * sizeof(int);
 
     value->data = malloc(value->size);
 
@@ -159,10 +159,8 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     off += sizeof(r->csize);
     memcpy(value->data + off, &r->cratio, sizeof(r->cratio));
     off += sizeof(r->cratio);
-    memcpy(value->data + off, &r->lnum, sizeof(r->lnum));
-    off += sizeof(r->lnum);
     int i = 0;
-    for(; i < r->lnum; i++){
+    for(; i < r->rcount; i++){
         memcpy(value->data + off, &r->llist[i], sizeof(int));
         off += sizeof(int);
     }
@@ -182,17 +180,15 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
     len += sizeof(r->csize);
     memcpy(&r->cratio, value->data + len, sizeof(r->cratio));
     len += sizeof(r->cratio);
-    memcpy(&r->lnum, value->data + len, sizeof(r->lnum));
-    len += sizeof(r->lnum);
     if(r->llist == NULL){
-        r->lsize = r->lnum + 1;
+        r->lsize = r->rcount + 1;
         r->llist = malloc(sizeof(int)*r->lsize);
-    }else if(r->lsize < r->lnum){
-        r->lsize = r->lnum + 1;
+    }else if(r->lsize < r->rcount){
+        r->lsize = r->rcount + 1;
         r->llist = realloc(r->llist, sizeof(int)*r->lsize);
     }
     int i = 0;
-    for(; i < r->lnum; i++){
+    for(; i < r->rcount; i++){
         memcpy(&r->llist[i], value->data + len, sizeof(int));
         len += sizeof(int);
     }

@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include "data.h"
 
-struct chunk_rec* create_chunk_rec(){
-    struct chunk_rec* r = malloc(sizeof(struct chunk_rec));
+/* memset(r, 0, sizeof(*r)) */
+struct void init_chunk_rec(struct chunk_rec *r){
 
     r->hashlen = 0;
     r->rcount = 0;
@@ -10,20 +10,9 @@ struct chunk_rec* create_chunk_rec(){
     r->rid = 0;
     r->csize = 0;
     r->cratio = 0;
-    r->lnum = 0;
     r->lsize = 0;
     r->llist = NULL;
 
-    return r;
-}
-
-void free_chunk_rec(struct chunk_rec *r){
-    if(r->llist != NULL){
-        free(r->llist);
-        r->llist = NULL;
-        r->lsize = 0;
-    }
-    free(r);
 }
 
 void reset_chunk_rec(struct chunk_rec *r){
@@ -35,18 +24,11 @@ void reset_chunk_rec(struct chunk_rec *r){
     r->lnum = 0;
 }
 
-struct container_rec* create_container_rec(){
-    struct container_rec* r = malloc(sizeof(struct container_rec));
+struct void init_container_rec(struct container_rec *r){
 
     r->cid = -1;
     r->lsize = 0;
     r->psize = 0;
-
-    return r;
-}
-
-void free_container_rec(struct container_rec* r){
-    free(r);
 }
 
 int container_full(struct container_rec* r, int csize){
@@ -56,18 +38,11 @@ int container_full(struct container_rec* r, int csize){
     return 0;
 }
 
-struct region_rec* create_region_rec(){
-    struct region_rec* r = malloc(sizeof(struct region_rec));
+struct void init_region_rec(struct region_rec *r){
 
     r->rid = -1;
     r->lsize = 0;
     r->psize = 0;
-
-    return r;
-}
-
-void free_region_rec(struct region_rec* r){
-    free(r);
 }
 
 int region_full(struct region_rec* r, int csize){

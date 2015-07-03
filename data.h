@@ -20,10 +20,9 @@ struct chunk_rec{
     int csize;
     /* compression ratio for each chunk */
     float cratio;
-    /* location list and its size */
+    /* location list and its buffer size
+     * rcount is the actual number of items in llist */
     int lsize;
-    /* The number of locations, smaller than lsize */
-    int lnum;
     int *llist;
 };
 
@@ -52,16 +51,13 @@ struct file_rec{
     int cnum;
 };
 
-void free_chunk_rec(struct chunk_rec *r);
-struct chunk_rec* create_chunk_rec();
+void init_chunk_rec(struct chunk_rec *r);
 void reset_chunk_rec(struct chunk_rec *r);
 
-struct container_rec* create_container_rec();
-void free_container_rec(struct container_rec* r);
+void init_container_rec(struct container_rec* r);
 int container_full(struct container_rec* r, int csize);
 
-struct region_rec* create_region_rec();
-void free_region_rec(struct region_rec* r);
+void init_region_rec(struct region_rec* r);
 int region_full(struct region_rec* r, int csize);
 
 #endif

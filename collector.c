@@ -137,12 +137,11 @@ static int read_hashfile(char *hashfile_name)
             ret = search_chunk(&chunk);
             if(ret == 0)
                 dcount++;
-            if(chunk.lsize <= chunk.lnum){
-                chunk.lsize = chunk.lnum + 1;
+            if(chunk.lsize <= chunk.rcount){
+                chunk.lsize = chunk.lrcount + 1;
                 chunk.llist = realloc(chunk.llist, chunk.lsize*sizeof(int));
             }
-            chunk.llist[chunk.lnum] = loc;
-            chunk.lnum++;
+            chunk.llist[chunk.rcount] = loc;
 
             chunk.csize = ci->size;
             chunk.cratio = ci->cratio;
