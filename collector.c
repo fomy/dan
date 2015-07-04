@@ -161,9 +161,14 @@ static int read_hashfile(char *hashfile_name)
 
             }else if(ret == 1){
                 /* A duplicate chunk */
+                /*printf("duplicate, %d\n", chunk.csize);*/
                 dup_count++;
 
-                assert(chunk.csize == ci->size);
+                if(chunk.csize != ci->size){
+                    print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle));
+                    printf("Collision: %d to %d\n", chunk.csize, ci->size);
+                    assert(chunk.csize == ci->size);
+                }
                 assert(chunk.cratio == ci->cratio);
 
                 /* TO-DO: update the associated container and region records. */
@@ -178,8 +183,8 @@ static int read_hashfile(char *hashfile_name)
                     struct region_rec target_region;
                     target_region.rid = chunk.rid;
                     ret = search_region(&target_region);
-                    if(ret != 0){
-                        fprintf(stderr, "Cannot find the target region");
+                    if(ret != 1){
+                        fprintf(stderr, "Cannot find the target region\n");
                         exit(2);
                     }
                     target_region.lsize += chunk.csize;
@@ -190,8 +195,8 @@ static int read_hashfile(char *hashfile_name)
                     struct container_rec target_container;
                     target_container.cid = chunk.cid;
                     ret = search_container(&target_container);
-                    if(ret != 0){
-                        fprintf(stderr, "Cannot find the target container");
+                    if(ret != 1){
+                        fprintf(stderr, "Cannot find the target container\n");
                         exit(2);
                     }
                     target_container.lsize += chunk.csize;
@@ -200,8 +205,8 @@ static int read_hashfile(char *hashfile_name)
                     struct region_rec target_region;
                     target_region.rid = chunk.rid;
                     ret = search_region(&target_region);
-                    if(ret != 0){
-                        fprintf(stderr, "Cannot find the target region");
+                    if(ret != 1){
+                        fprintf(stderr, "Cannot find the target region\n");
                         exit(2);
                     }
                     target_region.lsize += chunk.csize;
