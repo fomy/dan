@@ -492,6 +492,30 @@ int iterate_container(struct container_rec* r){
         return ret;
     }
 
+    struct container_rec* v = value.data;
+    r->cid = v->cid;
+    r->psize = v->psize;
+    r->lsize = v->lsize;
+
+    return ret;
+}
+
+int iterate_region(struct region_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
+    if(ret != 0){
+        fprintf(stderr, "no more region\n");
+        return ret;
+    }
+
+    struct region_rec *v = value.data;
+    r->rid = v->rid;
+    r->psize = v->psize;
+    r->lsize = v->lsize;
+
     return ret;
 }
 

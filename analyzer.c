@@ -19,8 +19,8 @@ int get_reference_per_chunk(){
         if(r.rcount > 128){
             /*printf("highly referenced chunk, %d\n", r.rcount);*/
             stat[127]++;
-        }
-        stat[r.rcount-1]++;
+        }else
+            stat[r.rcount-1]++;
     }
 
     fprintf(stdout, "max = %d\n", max);
@@ -28,6 +28,44 @@ int get_reference_per_chunk(){
     for(;i<128;i++){
         fprintf(stdout, "[%d : %d]\n", i+1, stat[i]);
     }
+
+    return 0;
+}
+
+int get_logical_size_per_container(){
+    int ret = init_iterator("CONTAINER");
+
+    float max = 1;
+
+    struct container_rec r;
+    memset(&r, 0, sizeof(r));
+    while(iterate_container(&r) == 0){
+        float factor = 1.0 * r.lsize / CONTAINER_SIZE;
+        fprintf(stdout, "%10.2f\n", factor < 1.0 ? 1.0 : factor);
+        if(factor > max)
+            max = factor;
+    }
+
+    fprintf(stdout, "max = %10.2f\n", max);
+
+    return 0;
+}
+
+int get_logical_size_per_region(){
+    int ret = init_iterator("REGION");
+
+    float max = 1;
+
+    struct region_rec r;
+    memset(&r, 0, sizeof(r));
+    while(iterate_region(&r) == 0){
+        float factor = 1.0 * r.lsize / COMPRESSION_REGION_SIZE;
+        fprintf(stdout, "%10.2f\n", factor < 1.0 ? 1.0 : factor);
+        if(factor > max)
+            max = factor;
+    }
+
+    fprintf(stdout, "max = %10.2f\n", max);
 
     return 0;
 }
@@ -45,7 +83,9 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-	ret = get_reference_per_chunk();
+	/*ret = get_reference_per_chunk();*/
+    ret = get_logical_size_per_container();
+    /*ret = get_logical_size_per_region();*/
 
     close_database();
 
