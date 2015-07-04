@@ -46,7 +46,6 @@ static void print_chunk_hash(uint64_t chunk_count, const uint8_t *hash,
     printf("\n");
 }
 
-
 static int read_hashfile(char *hashfile_name)
 {
     char buf[MAXLINE];
@@ -165,7 +164,7 @@ static int read_hashfile(char *hashfile_name)
                 dup_count++;
 
                 if(chunk.csize != ci->size){
-                    print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle));
+                    print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
                     printf("Collision: %d to %d\n", chunk.csize, ci->size);
                     assert(chunk.csize == ci->size);
                 }
