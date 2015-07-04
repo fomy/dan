@@ -8,18 +8,6 @@
 
 #include "data.h"
 
-static char* get_env_name(char *hashfile_name){
-    /* split hashfile_name */
-    char *token; 
-    char *pch = strtok(hashfile_name, "/");
-    while(pch != NULL){
-        token = pch;
-        pch = strtok(NULL, "/");
-    }
-    token = strtok(token, ".");
-    return token;
-}
-
 static DB* dbp;
 
 struct {
@@ -108,26 +96,18 @@ static int open_ddb(char* env_name, int flags){
     return 0;
 }
 
-int open_database(char* hashfile_name){
+int open_database(char* env_name){
 
     int ret = init_ddb();
-
-    char *buf = malloc(strlen(hashfile_name) + 1);
-    strcpy(buf, hashfile_name);
-    char *env_name = get_env_name(buf);
 
     ret = open_ddb(env_name, 0);
 
     return ret;
 }
 
-int create_database(char *hashfile_name){
+int create_database(char *env_name){
 
     int ret = init_ddb();
-
-    char buf[100];
-    strncpy(buf, hashfile_name, 99);
-    char *env_name = get_env_name(buf);
 
     ret = mkdir(env_name, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     if(ret != 0){

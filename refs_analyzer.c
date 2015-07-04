@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <getopt.h>
+#include <assert.h>
 #include "store.h"
 
 int get_reference_per_chunk(){
@@ -23,10 +25,10 @@ int get_reference_per_chunk(){
             stat[r.rcount-1]++;
     }
 
-    fprintf(stdout, "max = %d\n", max);
+    fprintf(stderr, "max = %d\n", max);
     int i = 0;
     for(;i<128;i++){
-        fprintf(stdout, "[%d : %d]\n", i+1, stat[i]);
+        fprintf(stderr, "[%d : %d]\n", i+1, stat[i]);
     }
 
     return 0;
@@ -46,7 +48,7 @@ int get_logical_size_per_container(){
             max = factor;
     }
 
-    fprintf(stdout, "max = %10.2f\n", max);
+    fprintf(stderr, "max = %10.2f\n", max);
 
     return 0;
 }
@@ -65,27 +67,48 @@ int get_logical_size_per_region(){
             max = factor;
     }
 
-    fprintf(stdout, "max = %10.2f\n", max);
+    fprintf(stderr, "max = %10.2f\n", max);
 
     return 0;
 }
 
+const char * const short_options = "u:";
+struct option long_options[] = {
+		{ "unit", 0, NULL, 'u' },
+		{ NULL, 0, NULL, 0 }
+};
+
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "Wrong usage!\n");
-		fprintf(stderr, "Usage: %s <hashfile>\n", argv[0]);
-		return -1;
-	}
+    int opt = 0;
+    char *unit = NULL;
+	while ((opt = getopt_long(argc, argv, short_options, long_options, NULL))
+			!= -1) {
+		switch (opt) {
+            case 'u':
+                unit = optarg;
+                break;
+            default:
+                return -1;
+        }
+    }
 
-    int ret = open_database(argv[1]);
+    assert(optind < argc);
+    int ret = open_database(argv[optind]);
     if(ret != 0){
         return ret;
     }
 
-	/*ret = get_reference_per_chunk();*/
-    ret = get_logical_size_per_container();
-    /*ret = get_logical_size_per_region();*/
+    if(unit == NULL || strcmp(unit, "CHUNK") == 0 || strcmp(unit, "chunk") == 0){
+        ret = get_reference_per_chunk();
+    }else if(strcmp(unit, "REGION") == 0 || strcmp(unit, "region") == 0){
+        ret = get_logical_size_per_region();
+    }else if(strcmp(unit, "CONTAINER") == 0 || strcmp(unit, "container") == 0){
+        ret = get_logical_size_per_container();
+    }else{
+        fprintf(stderr, "invalid unit");
+        return -1;
+    }
 
     close_database();
 

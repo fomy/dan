@@ -257,6 +257,18 @@ static int read_hashfile(char *hashfile_name)
     return 0;
 }
 
+static char* get_env_name(char *hashfile_name){
+    /* split hashfile_name */
+    char *token; 
+    char *pch = strtok(hashfile_name, "/");
+    while(pch != NULL){
+        token = pch;
+        pch = strtok(NULL, "/");
+    }
+    token = strtok(token, ".");
+    return token;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 2) {
@@ -265,7 +277,12 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int ret = create_database(argv[1]);
+    char *buf = malloc(strlen(argv[1]) + 1);
+    strcpy(buf, argv[1]);
+    char *env_name = get_env_name(buf);
+
+    int ret = create_database(env_name);
+    free(buf);
     if(ret != 0){
         return ret;
     }
