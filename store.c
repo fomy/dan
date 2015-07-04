@@ -40,6 +40,13 @@ static int init_ddb(){
         return ret;
     }
 
+    /* 1GB cache */
+    ret = ddb.env->set_cachesize(ddb.env, 1, 0, 0);
+    if(ret != 0){
+        fprintf(stderr, "Cannot set cache for ENV: %s\n", db_strerror(ret));
+        return ret;
+    }
+
     /* create db */
     ret = db_create(&ddb.chunk_dbp, ddb.env, 0);
     if(ret != 0){
@@ -144,7 +151,7 @@ void close_database(){
 static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     
     value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
-        sizeof(r->csize) + sizeof(r->cratio) + r->rcount * sizeof(int);
+        sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->fcount) +  (r->rcount + r->fcount) * sizeof(int);
 
     value->data = malloc(value->size);
 
@@ -159,9 +166,16 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     off += sizeof(r->csize);
     memcpy(value->data + off, &r->cratio, sizeof(r->cratio));
     off += sizeof(r->cratio);
+    memcpy(value->data + off, &r->fcount, sizeof(r->fcount));
+    off += sizeof(r->fcount);
     int i = 0;
     for(; i < r->rcount; i++){
-        memcpy(value->data + off, &r->llist[i], sizeof(int));
+        memcpy(value->data + off, &r->list[i], sizeof(int));
+        off += sizeof(int);
+    }
+    i = 0;
+    for(; i < r->fcount; i++){
+        memcpy(value->data + off, &r->list[r->lsize/2 + i], sizeof(int));
         off += sizeof(int);
     }
     assert(off == value->size);
@@ -180,16 +194,22 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
     len += sizeof(r->csize);
     memcpy(&r->cratio, value->data + len, sizeof(r->cratio));
     len += sizeof(r->cratio);
-    if(r->llist == NULL){
-        r->lsize = r->rcount + 1;
-        r->llist = malloc(sizeof(int)*r->lsize);
-    }else if(r->lsize < r->rcount){
-        r->lsize = r->rcount + 1;
-        r->llist = realloc(r->llist, sizeof(int)*r->lsize);
+    memcpy(&r->fcount, value->data + len, sizeof(r->fcount));
+    len += sizeof(r->fcount);
+    if(r->list == NULL){
+        r->lsize = r->rcount * 2 + 2;
+        r->list = malloc(sizeof(int) * r->lsize);
+    }else if(r->lsize < r->rcount * 2 + 2 ){
+        r->lsize = r->rcount * 2 + 2;
+        r->list = realloc(r->list, sizeof(int) * r->lsize);
     }
     int i = 0;
     for(; i < r->rcount; i++){
-        memcpy(&r->llist[i], value->data + len, sizeof(int));
+        memcpy(&r->list[i], value->data + len, sizeof(int));
+        len += sizeof(int);
+    }
+    for(i = 0 ; i < r->fcount; i++){
+        memcpy(&r->list[r->lsize/2 + i], value->data + len, sizeof(int));
         len += sizeof(int);
     }
     assert(len == value->size);
@@ -198,6 +218,7 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
 /* 
  * Search hash in database.
  * chunk_rec returns a pointer if exists; otherwise, returns NULL
+ * return 1 indicates existence; 0 indicates not exist.
  * */
 int search_chunk(struct chunk_rec *crec){
     DBT key, value;
@@ -206,9 +227,14 @@ int search_chunk(struct chunk_rec *crec){
 
     key.data = crec->hash;
     key.size = crec->hashlen;
+    /* Berkeley DB will not write into the DBT. See API reference.
+     * I am not sure whether DB will write to key by default. */
+    key.flags = DB_DBT_READONLY;
 
     value.data = NULL;
     value.size = 0;
+    /* Berkeley DB will allocate memory for the returned item.
+     * We should free it by ourselves */
     value.flags = DB_DBT_MALLOC;
 
     int ret = ddb.chunk_dbp->get(ddb.chunk_dbp, NULL, &key, &value, 0);
@@ -216,13 +242,18 @@ int search_chunk(struct chunk_rec *crec){
         /* success */
         unserial_chunk_rec(&value, crec);
         /*fprintf(stdout, "exist\n");*/
+        ret = 1;
     }else if(ret == DB_NOTFOUND){
         assert(value.data == NULL);
         reset_chunk_rec(crec);
         /*fprintf(stdout, "Not exist\n");*/
+        ret = 0;
     }else{
         fprintf(stderr, "Cannot get value: %s\n", db_strerror(ret));
+        ret = -1;
     }
+
+    free(value.data);
 
     return ret;
 }
@@ -244,6 +275,43 @@ int update_chunk(struct chunk_rec *crec){
     return ret;
 }
 
+int search_container(struct container_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->cid;
+    key.size = sizeof(r->cid);
+    key.flags = DB_DBT_READONLY;
+
+    value.data = NULL;
+    value.size = 0;
+    value.flags = DB_DBT_MALLOC;
+
+    int ret = ddb.container_dbp->get(ddb.container_dbp, NULL, &key, &value, 0);
+    if(ret == 0){
+        /* success */
+
+        struct container_rec *v = value.data;
+        r->lsize = v->lsize;
+        r->psize = v->psize;
+        assert(r->cid == v->cid);
+
+        /*fprintf(stdout, "exist\n");*/
+        ret = 1;
+    }else if(ret == DB_NOTFOUND){
+        assert(value.data == NULL);
+        /*fprintf(stdout, "Not exist\n");*/
+        ret = 0;
+    }else{
+        fprintf(stderr, "Cannot get container: %s\n", db_strerror(ret));
+        ret = -1;
+    }
+
+    free(value.data);
+
+    return ret;
+}
 
 int update_container(struct container_rec* r){
     DBT key, value;
@@ -259,8 +327,45 @@ int update_container(struct container_rec* r){
     int ret = ddb.container_dbp->put(ddb.container_dbp, NULL, &key, &value, 0);
 
     if(ret != 0){
-        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+        fprintf(stderr, "Cannot put container: %s\n", db_strerror(ret));
     }
+    return ret;
+}
+
+int search_region(struct region_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->rid;
+    key.size = sizeof(r->rid);
+    key.flags = DB_DBT_READONLY;
+
+    value.data = NULL;
+    value.size = 0;
+    value.flags = DB_DBT_MALLOC;
+
+    int ret = ddb.region_dbp->get(ddb.region_dbp, NULL, &key, &value, 0);
+    if(ret == 0){
+        /* success */
+        struct region_rec *v = value.data;
+        r->lsize = v->lsize;
+        r->psize = v->psize;
+        assert(r->rid == v->rid);
+
+        /*fprintf(stdout, "exist\n");*/
+        ret = 1;
+    }else if(ret == DB_NOTFOUND){
+        assert(value.data == NULL);
+        /*fprintf(stdout, "Not exist\n");*/
+        ret = 0;
+    }else{
+        fprintf(stderr, "Cannot get region: %s\n", db_strerror(ret));
+        ret = -1;
+    }
+
+    free(value.data);
+
     return ret;
 }
 
@@ -275,11 +380,48 @@ int update_region(struct region_rec* r){
     value.data = r;
     value.size = sizeof(*r);
 
-    int ret = ddb.container_dbp->put(ddb.region_dbp, NULL, &key, &value, 0);
+    int ret = ddb.region_dbp->put(ddb.region_dbp, NULL, &key, &value, 0);
 
     if(ret != 0){
-        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+        fprintf(stderr, "Cannot put region: %s\n", db_strerror(ret));
     }
+
+    return ret;
+}
+
+int search_file(struct file_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
+
+    key.data = &r->fid;
+    key.size = sizeof(r->fid);
+    key.flags = DB_DBT_READONLY;
+
+    value.data = NULL;
+    value.size = 0;
+    value.flags = DB_DBT_MALLOC;
+
+    int ret = ddb.file_dbp->get(ddb.file_dbp, NULL, &key, &value, 0);
+    if(ret == 0){
+        /* success */
+        struct file_rec *v = value.data;
+        r->fsize = v->fsize;
+        r->cnum = v->cnum;
+        assert(r->fid == v->fid);
+
+        /*fprintf(stdout, "exist\n");*/
+        ret = 1;
+    }else if(ret == DB_NOTFOUND){
+        assert(value.data == NULL);
+        /*fprintf(stdout, "Not exist\n");*/
+        ret = 0;
+    }else{
+        fprintf(stderr, "Cannot get file: %s\n", db_strerror(ret));
+        ret = -1;
+    }
+
+    free(value.data);
 
     return ret;
 }
@@ -297,7 +439,7 @@ int update_file(struct file_rec* r){
 
     int ret = ddb.file_dbp->put(ddb.file_dbp, NULL, &key, &value, 0);
     if(ret != 0){
-        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+        fprintf(stderr, "Cannot put file: %s\n", db_strerror(ret));
     }
 
     return ret;

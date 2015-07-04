@@ -1,8 +1,12 @@
 #ifndef DATA_H_
 #define DATA_H_
 
+/* 4MB-sized container */
 #define CONTAINER_SIZE 4194304
+/* 128KB-sized compression region.
+ * Each container has 32 regions. */
 #define COMPRESSION_REGION_SIZE 131072
+#define REGIONS_PER_CONTAINER 32
 
 /* chunk record */
 struct chunk_rec{
@@ -20,10 +24,16 @@ struct chunk_rec{
     int csize;
     /* compression ratio for each chunk */
     float cratio;
-    /* location list and its buffer size
-     * rcount is the actual number of items in llist */
+    /* The number of files referencing the chunk,
+     * which is smaller than rcount */
+    int fcount;
+    /* The list stores the locations and the files referring to it
+     * lsize is the list size 
+     * The first part (1/2) includes locations, and the second part (1/2) includes file IDs.
+     * The actual number of locations is rcount;
+     * the actual number of file IDs is fcount  */
     int lsize;
-    int *llist;
+    int *list;
 };
 
 /* containr record */
@@ -33,6 +43,8 @@ struct container_rec{
     int lsize;
     /* physical size */
     int psize;
+    /* the empty slots for compression region */
+    int slots;
 };
 
 /* compression region record */
@@ -51,13 +63,12 @@ struct file_rec{
     int cnum;
 };
 
-void init_chunk_rec(struct chunk_rec *r);
 void reset_chunk_rec(struct chunk_rec *r);
-
-void init_container_rec(struct container_rec* r);
-int container_full(struct container_rec* r, int csize);
-
-void init_region_rec(struct region_rec* r);
-int region_full(struct region_rec* r, int csize);
+void reset_container_rec(struct container_rec *r);
+int container_full(struct container_rec* r);
+void reset_region_rec(struct region_rec* r);
+int add_chunk_to_region(struct chunk_rec* c, struct region_rec* r);
+int add_region_to_container(struct region_rec* r, struct container_rec* c);
+int check_file_list(int *list, int fcount, int fid);
 
 #endif

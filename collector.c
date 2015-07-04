@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <time.h>
 #include <string.h>
+#include <assert.h>
 
 /* Use this macros if libhashfile library is installed on your system */
 // #include <libhashfile.h>
@@ -33,145 +34,229 @@
 #define MAXLINE	4096
 
 static void print_chunk_hash(uint64_t chunk_count, const uint8_t *hash,
-					int hash_size_in_bytes)
+        int hash_size_in_bytes)
 {
-	int j;
+    int j;
 
-	printf("Chunk %06"PRIu64 ": ", chunk_count);
+    printf("Chunk %06"PRIu64 ": ", chunk_count);
 
-	printf("%.2hhx", hash[0]);
-	for (j = 1; j < hash_size_in_bytes; j++)
-		printf(":%.2hhx", hash[j]);
-	printf("\n");
+    printf("%.2hhx", hash[0]);
+    for (j = 1; j < hash_size_in_bytes; j++)
+        printf(":%.2hhx", hash[j]);
+    printf("\n");
 }
 
 
 static int read_hashfile(char *hashfile_name)
 {
-	char buf[MAXLINE];
-	struct hashfile_handle *handle;
-	const struct chunk_info *ci;
-	uint64_t chunk_count;
-	time_t scan_start_time;
-	int ret;
-    int loc = 0;
-    int dcount = 0;
+    char buf[MAXLINE];
+    struct hashfile_handle *handle;
+    const struct chunk_info *ci;
+    time_t scan_start_time;
+    int ret;
 
     struct chunk_rec chunk;
-    memset(&chunk, 0 ,sizeof(chunk));
-
+    memset(&chunk, 0, sizeof(chunk));
+    chunk.lsize = 2;
+    chunk.list = malloc(sizeof(int) * chunk.lsize);
     struct container_rec container;
-    memset(&container, 0 ,sizeof(container));
-
+    memset(&container, 0, sizeof(container));
     struct region_rec region;
-    memset(&region, 0 ,sizeof(region));
-
+    memset(&region, 0, sizeof(region));
     struct file_rec file;
-    memset(&file, 0 ,sizeof(file));
+    /*memset(&file, 0, sizeof(file));*/
+
+    /* statistics for generating IDs
+     * ID starts from 0 */
+    int chunk_count = 0;
+    int container_count = 0;
+    int region_count = 0;
+    int file_count = 0;
+
+    int dup_count = 0;
 
     handle = hashfile_open(hashfile_name);
+
     if (!handle) {
         fprintf(stderr, "Error opening hash file: %d!", errno);
         return -1;
     }
 
-	/* Print some information about the hash file */
-	scan_start_time = hashfile_start_time(handle);
-	printf("Collected at [%s] on %s",
-			hashfile_sysid(handle),
-			ctime(&scan_start_time));
+    /* Print some information about the hash file */
+    scan_start_time = hashfile_start_time(handle);
+    printf("Collected at [%s] on %s",
+            hashfile_sysid(handle),
+            ctime(&scan_start_time));
 
-	ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
-	if (ret < 0) {
-		fprintf(stderr, "Unrecognized chunking method: %d!", errno);
-		return -1;
-	}
+    ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
+    if (ret < 0) {
+        fprintf(stderr, "Unrecognized chunking method: %d!", errno);
+        return -1;
+    }
 
-	printf("Chunking method: %s", buf);
+    printf("Chunking method: %s", buf);
 
-	ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
-	if (ret < 0) {
-		fprintf(stderr, "Unrecognized hashing method: %d!", errno);
-		return -1;
-	}
+    ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
+    if (ret < 0) {
+        fprintf(stderr, "Unrecognized hashing method: %d!", errno);
+        return -1;
+    }
 
-	printf("Hashing method: %s\n", buf);
+    printf("Hashing method: %s\n", buf);
 
-	chunk_count = 0;
-	/* Go over the files in a hashfile */
-	printf("== List of files and hashes ==\n");
-	while (1) {
-		ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-				"Cannot get next file from a hashfile: %d!\n",
-				errno);
-			return -1;
-		}
+    /* Go over the files in a hashfile */
+    while (1) {
+        ret = hashfile_next_file(handle);
+        if (ret < 0) {
+            fprintf(stderr,
+                    "Cannot get next file from a hashfile: %d!\n",
+                    errno);
+            return -1;
+        }
 
-		/* exit the loop if it was the last file */
-		if (ret == 0)
-			break;
+        /* exit the loop if it was the last file */
+        if (ret == 0)
+            break;
 
-        /*printf("File path: %s\n", hashfile_curfile_path(handle));*/
-        /*printf("File size: %"PRIu64 " B\n",*/
-                /*hashfile_curfile_size(handle));*/
-        /*printf("Chunks number: %" PRIu64 "\n",*/
-                /*hashfile_curfile_numchunks(handle));*/
+        /* file start */
+        memset(&file, 0, sizeof(file));
+        file.fid = file_count;
 
-		/* Go over the chunks in the current file */
-		/*chunk_count = 0;*/
-		while (1) {
-			ci = hashfile_next_chunk(handle);
-            loc ++;
-			if (!ci) /* exit the loop if it was the last chunk */
-				break;
-
-			chunk_count++;
-
-            /*print_chunk_hash(chunk_count, ci->hash,*/
-                    /*hashfile_hash_size(handle) / 8);*/
+        while (1) {
+            ci = hashfile_next_chunk(handle);
+            if (!ci) /* exit the loop if it was the last chunk */
+                break;
 
             memcpy(chunk.hash, ci->hash, hashfile_hash_size(handle)/8);
             chunk.hashlen = hashfile_hash_size(handle)/8;
-            ret = search_chunk(&chunk);
-            if(ret == 0)
-                dcount++;
-            if(chunk.lsize <= chunk.rcount){
-                chunk.lsize = chunk.rcount + 1;
-                chunk.llist = realloc(chunk.llist, chunk.lsize*sizeof(int));
-            }
-            chunk.llist[chunk.rcount] = loc;
 
-            chunk.csize = ci->size;
-            chunk.cratio = ci->cratio;
+            ret = search_chunk(&chunk);
+            if(ret == 0){
+                /* A unique chunk */
+                chunk.csize = ci->size;
+                chunk.cratio = ci->cratio;
+
+                /* TO-DO: write to the open region */
+                while(add_chunk_to_region(&chunk, &region) != 1){
+                    /* the last region is full, write it to the open container */
+                    add_region_to_container(&region, &container);
+                    update_region(&region);
+                    region_count++;
+
+                    /* open a new region */
+                    reset_region_rec(&region);
+                    region.rid = region_count;
+
+                    if(container_full(&container)){
+                        update_container(&container);
+                        container_count++;
+
+                        reset_container_rec(&container);
+                        container.cid = container_count;
+                    }
+                }
+
+                chunk.rid = region.rid;
+                chunk.cid = container.cid;
+
+            }else if(ret == 1){
+                /* A duplicate chunk */
+                dup_count++;
+
+                assert(chunk.csize == ci->size);
+                assert(chunk.cratio == ci->cratio);
+
+                /* TO-DO: update the associated container and region records. */
+                if(chunk.rid == region.rid){
+                    /* The chunk is in the open region */
+                    assert(chunk.cid == container.cid);
+
+                    container.lsize += chunk.csize;
+                    region.lsize += chunk.csize;
+                
+                }else if(chunk.cid == container.cid){
+                    struct region_rec target_region;
+                    target_region.rid = chunk.rid;
+                    ret = search_region(&target_region);
+                    if(ret != 0){
+                        fprintf(stderr, "Cannot find the target region");
+                        exit(2);
+                    }
+                    target_region.lsize += chunk.csize;
+                    update_region(&target_region);
+
+                    container.lsize += chunk.csize;
+                }else{
+                    struct container_rec target_container;
+                    target_container.cid = chunk.cid;
+                    ret = search_container(&target_container);
+                    if(ret != 0){
+                        fprintf(stderr, "Cannot find the target container");
+                        exit(2);
+                    }
+                    target_container.lsize += chunk.csize;
+                    update_container(&target_container);
+
+                    struct region_rec target_region;
+                    target_region.rid = chunk.rid;
+                    ret = search_region(&target_region);
+                    if(ret != 0){
+                        fprintf(stderr, "Cannot find the target region");
+                        exit(2);
+                    }
+                    target_region.lsize += chunk.csize;
+                    update_region(&target_region);
+                }
+
+            }else{
+                exit(2);
+            }
+
+            assert(chunk.lsize >= (chunk.rcount + 1) * 2);
+
+            /* TO-DO: update the chunk.list */
+            chunk.list[chunk.rcount] = chunk_count;
             chunk.rcount++;
+            
+            /* determine whether we need to update file list */
+            if(!check_file_list(&chunk.list[chunk.lsize/2], chunk.fcount, file_count)){
+                chunk.list[chunk.lsize/2 + chunk.fcount] = file_count;
+                chunk.fcount++;
+            }
 
             ret = update_chunk(&chunk);
 
-		}
-	}
+            /* update file info */
+            file.cnum++;
+            file.fsize += chunk.csize;
 
-	hashfile_close(handle);
+            chunk_count++;
+        }
+        /* file end; update it */
+        update_file(&file);
+        file_count++;
+    }
 
-    printf("%d duplicate chunks out of %" PRId64"\n", dcount, chunk_count);
-	return 0;
+    hashfile_close(handle);
+
+    printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "Wrong usage!\n");
-		fprintf(stderr, "Usage: %s <hashfile>\n", argv[0]);
-		return -1;
-	}
+    if (argc != 2) {
+        fprintf(stderr, "Wrong usage!\n");
+        fprintf(stderr, "Usage: %s <hashfile>\n", argv[0]);
+        return -1;
+    }
 
     int ret = create_database(argv[1]);
     if(ret != 0){
         return ret;
     }
 
-	ret = read_hashfile(argv[1]);
+    ret = read_hashfile(argv[1]);
 
     close_database();
 
