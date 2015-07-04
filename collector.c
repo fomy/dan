@@ -174,7 +174,7 @@ static int read_hashfile(char *hashfile_name)
                 dup_count++;
 
                 if(chunk.csize != ci->size){
-                    /*print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);*/
+                    print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
                     printf("Hash Collision: %d to %llu\n", chunk.csize, ci->size);
                     /*assert(chunk.csize == ci->size);*/
                 }

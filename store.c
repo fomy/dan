@@ -112,8 +112,8 @@ int open_database(char* hashfile_name){
 
     int ret = init_ddb();
 
-    char buf[100];
-    strncpy(buf, hashfile_name, 99);
+    char *buf = malloc(strlen(hashfile_name) + 1);
+    strcpy(buf, hashfile_name);
     char *env_name = get_env_name(buf);
 
     ret = open_ddb(env_name, 0);
