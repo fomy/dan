@@ -46,6 +46,10 @@ static void print_chunk_hash(uint64_t chunk_count, const uint8_t *hash,
     printf("\n");
 }
 
+/* two chunks with this hash have different chunk size */
+/* "18:06:bd:7a:61:11" */
+char col[] = {0x18,0x6,0xbd,0x7a,0x61,0x11};
+
 static int read_hashfile(char *hashfile_name)
 {
     char buf[MAXLINE];
@@ -129,6 +133,12 @@ static int read_hashfile(char *hashfile_name)
             memcpy(chunk.hash, ci->hash, hashfile_hash_size(handle)/8);
             chunk.hashlen = hashfile_hash_size(handle)/8;
 
+            /* We find a hash collision */
+            /*if(memcmp(chunk.hash, col, sizeof(col)) == 0){*/
+                /*print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);*/
+                /*printf("chunk size: %d\n", ci->size);*/
+            /*}*/
+
             ret = search_chunk(&chunk);
             if(ret == 0){
                 /* A unique chunk */
@@ -164,11 +174,11 @@ static int read_hashfile(char *hashfile_name)
                 dup_count++;
 
                 if(chunk.csize != ci->size){
-                    print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
-                    printf("Collision: %d to %d\n", chunk.csize, ci->size);
-                    assert(chunk.csize == ci->size);
+                    /*print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);*/
+                    printf("Hash Collision: %d to %llu\n", chunk.csize, ci->size);
+                    /*assert(chunk.csize == ci->size);*/
                 }
-                assert(chunk.cratio == ci->cratio);
+                /*assert(chunk.cratio == ci->cratio);*/
 
                 /* TO-DO: update the associated container and region records. */
                 if(chunk.rid == region.rid){
