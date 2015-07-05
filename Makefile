@@ -26,4 +26,4 @@ data:data.c
 	$(CC) $(CFLAGS) -c data.c
 
 clean:
-	rm *.o collector refs_analyzer
+	rm *.o collector refs_analyzer locality_analyzer
