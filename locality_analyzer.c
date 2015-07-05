@@ -19,6 +19,7 @@ int get_distance_per_duplicate_chunk_all(unsigned int lb, unsigned int rb){
             int i = 1, dist;
             for(; i < r.rcount; i++){
                 dist = r.list[i] - prev;
+                assert(dist > 0);
                 fprintf(stdout, "%d\n", dist);
                 if(max < dist)
                     max = dist;
@@ -39,8 +40,11 @@ int get_distance_per_duplicate_chunk_first(unsigned int lb, unsigned int rb){
     memset(&r, 0, sizeof(r));
 
     while(iterate_chunk(&r) == 0){
-        if(r.rcount >= lb && r.rcount <= rb)
+        if(r.rcount >= lb && r.rcount <= rb){
+            /*fprintf(stderr, "%d\n", r.rcount);*/
+            assert(r.list[1] > r.list[0]);
             fprintf(stdout, "%d\n", r.list[1] - r.list[0]);
+        }
     }
 
     return 0;
@@ -83,6 +87,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    assert(lb >= 2);
     int ret = open_database(argv[optind]);
     if(ret != 0){
         return ret;
