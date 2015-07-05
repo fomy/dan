@@ -8,13 +8,16 @@ CC = gcc
 MAKE = make
 
 all:
-	$(MAKE) collector refs_analyzer
+	$(MAKE) collector refs_analyzer locality_analyzer
 
 collector:store data collector.c libhashfile.c
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c libhashfile.c -o collector store.o data.o $(LIBS)
 
 refs_analyzer:store data refs_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) refs_analyzer.c -o refs_analyzer store.o data.o $(LIBS)
+
+locality_analyzer:store data locality_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) locality_analyzer.c -o locality_analyzer store.o data.o $(LIBS)
 
 store:store.c
 	$(CC) $(CFLAGS) -c store.c $(INCLUDE)
