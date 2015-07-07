@@ -39,6 +39,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
 
     float sum = 0;
     int count = 0;
+    int chunk_count = 0;
 
     GHashTable *files = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
 
@@ -46,6 +47,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     while(iterate_chunk(&r) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             /* Get all files' IDs */
+            chunk_count++;
             int i = 0;
             for(; i<r.fcount; i++){
                 int fid = r.list[r.lsize/2 + i];
@@ -80,6 +82,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     g_hash_table_destroy(files);
 
     fprintf(stderr, "avg: %10.2f\n", sum/count);
+    fprintf(stderr, "chunk count: %d\n", chunk_count);
 
     return 0;
 }
