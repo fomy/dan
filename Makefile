@@ -8,7 +8,7 @@ CC = gcc
 MAKE = make
 
 all:
-	$(MAKE) collector refs_analyzer locality_analyzer chunksize_analyzer
+	$(MAKE) collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer
 
 collector:store data collector.c libhashfile.c
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c libhashfile.c -o collector store.o data.o $(LIBS)
@@ -22,6 +22,9 @@ locality_analyzer:store data locality_analyzer.c
 chunksize_analyzer:store data chunksize_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) chunksize_analyzer.c -o chunksize_analyzer store.o data.o $(LIBS)
 
+filenum_analyzer:store data filenum_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) filenum_analyzer.c -o filenum_analyzer store.o data.o $(LIBS)
+
 store:store.c
 	$(CC) $(CFLAGS) -c store.c $(INCLUDE)
 
@@ -29,4 +32,4 @@ data:data.c
 	$(CC) $(CFLAGS) -c data.c
 
 clean:
-	rm *.o collector refs_analyzer locality_analyzer chunksize_analyzer
+	rm *.o collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer
