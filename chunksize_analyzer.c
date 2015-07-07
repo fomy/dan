@@ -23,6 +23,8 @@ int get_chunksize_distribution(unsigned int lb, unsigned int rb){
 
     fprintf(stderr, "avg. chunk size = %10.2f\n", sum/count);
 
+    close_iterator();
+
     return 0;
 }
 

@@ -30,6 +30,8 @@ int get_distance_per_duplicate_chunk_all(unsigned int lb, unsigned int rb){
 
     fprintf(stderr, "max = %d\n", max);
 
+    close_iterator();
+
     return 0;
 }
 

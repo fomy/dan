@@ -442,6 +442,10 @@ int init_iterator(char *type){
     return ret;
 }
 
+void close_iterator(){
+    ddb.cursorp->close(ddb.cursorp);
+}
+
 int iterate_chunk(struct chunk_rec* r){
     DBT key, value;
     memset(&key, 0, sizeof(DBT));
@@ -499,4 +503,21 @@ int iterate_region(struct region_rec* r){
     return ret;
 }
 
+int iterate_file(struct file_rec* r){
+    DBT key, value;
+    memset(&key, 0, sizeof(DBT));
+    memset(&value, 0, sizeof(DBT));
 
+    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
+    if(ret != 0){
+        fprintf(stderr, "no more file\n");
+        return ret;
+    }
+
+    struct file_rec *v = value.data;
+    r->fid = v->fid;
+    r->fsize = v->fsize;
+    r->cnum = v->cnum;
+
+    return ret;
+}

@@ -31,6 +31,8 @@ int get_reference_per_chunk(){
         fprintf(stderr, "[%d : %d]\n", i+1, stat[i]);
     }
 
+    close_iterator();
+
     return 0;
 }
 
