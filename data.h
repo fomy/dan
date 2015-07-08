@@ -61,6 +61,12 @@ struct file_rec{
     int fsize;
     /* chunk number */
     int cnum;
+    /* The file suffix */
+    char suffix[8];
+    /* The file hash */
+    char hash[20];
+    /* The minimal hash */
+    char minhash[20];
 };
 
 void reset_chunk_rec(struct chunk_rec *r);

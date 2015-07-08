@@ -11,7 +11,7 @@ all:
 	$(MAKE) collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer filesize_analyzer sequence
 
 collector:store data collector.c libhashfile
-	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector store.o data.o libhashfile.o $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector store.o data.o libhashfile.o $(LIBS) -lcrypto
 
 refs_analyzer:store data refs_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) refs_analyzer.c -o refs_analyzer store.o data.o $(LIBS)
