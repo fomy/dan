@@ -28,8 +28,8 @@ static int init_ddb(){
         return ret;
     }
 
-    /* 1GB cache */
-    ret = ddb.env->set_cachesize(ddb.env, 1, 0, 0);
+    /* 2GB cache */
+    ret = ddb.env->set_cachesize(ddb.env, 2, 0, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot set cache for ENV: %s\n", db_strerror(ret));
         return ret;
