@@ -29,17 +29,75 @@ static gint suffix_size_cmp(struct suffix* a, struct suffix* b, gpointer data){
     return b->size > a->size ? 1:-1;
 }
 
-int get_top_filetypes(int top){
+void get_selected_filetypes(GHashTable* types, int64_t *fs_count, int64_t* fs_size, unsigned int lb, unsigned int rb){
+    int ret = init_iterator("CHUNK");
+
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+
+    GHashTable *files = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
+
+    /*fprintf(stderr, "Find the files\n");*/
+    while(iterate_chunk(&r) == 0){
+        if(r.rcount >= lb && r.rcount <= rb){
+            /* Get all files' IDs */
+            int i = 0;
+            for(; i<r.fcount; i++){
+                int fid = r.list[r.lsize/2 + i];
+                if(!g_hash_table_contains(files, &fid)){
+                    int *new = malloc(sizeof(int));
+                    *new = fid;
+                    g_hash_table_insert(files, new, NULL);
+                }
+            }
+        }
+    }
+
+    /* Now, all required files are in files table */
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, files);
+
+    struct file_rec file;
+    struct suffix *s = NULL;
+    while(g_hash_table_iter_next(&iter, &key, &value)){
+        file.fid = *(int*)key;
+        if(search_file(&file) != 1){
+            fprintf(stderr, "Cannot find the required file %d in file db\n", file.fid);
+            exit(-1);
+        }
+
+        if(strncmp(file.suffix, "edu,", 4) == 0){
+            strcpy(file.suffix, "edu,?");
+        }else if(strlen(file.suffix) == 0){
+            strcpy(file.suffix, ".None");
+        }
+        if((s = g_hash_table_lookup(types, file.suffix)) == NULL){
+            s = malloc(sizeof(struct suffix));
+            memcpy(s->suffix, file.suffix, sizeof(s->suffix));
+            s->num = 0;
+            s->size = 0;
+            g_hash_table_insert(types, s->suffix, s);
+        }
+        s->num++;
+        s->size += file.fsize;
+
+        *fs_size += file.fsize;
+
+    }
+    *fs_count = g_hash_table_size(files);
+
+    g_hash_table_destroy(files);
+
+    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(types), *fs_count);
+}
+
+void get_all_filetypes(GHashTable *types, int64_t *fs_count, int64_t *fs_size){
     int ret = init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
 
-    /* File system */
-    int64_t fs_count = 0;
-    int64_t fs_size = 0;
-
-    GHashTable *table = g_hash_table_new_full(g_int_hash, suffix_equal, NULL, free);
     struct suffix *s = NULL;
     while(iterate_file(&r) == 0){
         if(strncmp(r.suffix, "edu,", 4) == 0){
@@ -47,27 +105,30 @@ int get_top_filetypes(int top){
         }else if(strlen(r.suffix) == 0){
             strcpy(r.suffix, ".None");
         }
-        if((s = g_hash_table_lookup(table, r.suffix)) == NULL){
+        if((s = g_hash_table_lookup(types, r.suffix)) == NULL){
             s = malloc(sizeof(struct suffix));
             memcpy(s->suffix, r.suffix, sizeof(s->suffix));
             s->num = 0;
             s->size = 0;
-            g_hash_table_insert(table, s->suffix, s);
+            g_hash_table_insert(types, s->suffix, s);
         }
         s->num++;
         s->size += r.fsize;
 
-        fs_count++;
-        fs_size += r.fsize;
+        (*fs_count)++;
+        *fs_size += r.fsize;
     }
     close_iterator();
 
-    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(table), fs_count);
+    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(types), *fs_count);
+}
+
+void get_top_filetypes(GHashTable *types, int64_t fs_count, int64_t fs_size, int top){
 
     GSequence* seq_num = g_sequence_new(NULL), *seq_size = g_sequence_new(NULL);
 
     GHashTableIter iter;
-    g_hash_table_iter_init(&iter, table);
+    g_hash_table_iter_init(&iter, types);
     gpointer key, value;
     while(g_hash_table_iter_next(&iter, &key, &value)){
         g_sequence_insert_sorted(seq_num, value, suffix_num_cmp, NULL);
@@ -79,28 +140,33 @@ int get_top_filetypes(int top){
         }
     }
 
+    printf("%10s %10s %10s %10s\n", "#type", "num", "type", "size");
     int i = 0;
+    int64_t total_num = 0, total_size = 0;
     GSequenceIter* num_iter = g_sequence_get_begin_iter(seq_num);
     GSequenceIter* size_iter = g_sequence_get_begin_iter(seq_size);
     for(; i<top; i++){
         struct suffix* num_suffix = g_sequence_get(num_iter);
         struct suffix* size_suffix = g_sequence_get(size_iter);
-        printf("%8s %.4f %8s %.4f\n", num_suffix->suffix, 1.0*num_suffix->num/fs_count, size_suffix->suffix, 1.0*size_suffix->size/fs_size);
+        total_num += num_suffix->num;
+        total_size += size_suffix->size;
+        printf("%10s %10.4f %10s %10.4f\n", num_suffix->suffix, 1.0*num_suffix->num/fs_count, size_suffix->suffix, 1.0*size_suffix->size/fs_size);
         num_iter = g_sequence_iter_next(num_iter);
         size_iter = g_sequence_iter_next(size_iter);
     }
+    printf("%10s %10.4f %10s %10.4f\n", "Sum", 1.0*total_num/fs_count, "Sum", 1.0*total_size/fs_size);
+    printf("%10s %" PRId64 " %10s %" PRId64 "\n", "#Total", fs_count, "Total(MB)", fs_size/1024/1024);
 
-    g_hash_table_destroy(table);
     g_sequence_free(seq_num);
     g_sequence_free(seq_size);
-    return 0;
 }
 
 int main(int argc, char *argv[])
 {
     int opt = 0;
     unsigned int lb = 1, rb =-1;
-	while ((opt = getopt_long(argc, argv, "l:r:", NULL, NULL))
+    int top = 10;
+	while ((opt = getopt_long(argc, argv, "l:r:t:", NULL, NULL))
 			!= -1) {
 		switch (opt) {
             case 'l':
@@ -108,6 +174,9 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 rb = atoi(optarg);
+                break;
+            case 't':
+                top = atoi(optarg);
                 break;
             default:
                 return -1;
@@ -119,7 +188,20 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-    get_top_filetypes(20);
+    /* File system */
+    int64_t fs_count = 0;
+    int64_t fs_size = 0;
+
+    GHashTable *types= g_hash_table_new_full(g_int_hash, suffix_equal, NULL, free);
+
+    if(lb == 1 && rb == -1)
+        get_all_filetypes(types, &fs_count, &fs_size);
+    else
+        get_selected_filetypes(types, &fs_count, &fs_size, lb, rb);
+
+    get_top_filetypes(types, fs_count, fs_size, top);
+
+    g_hash_table_destroy(types);
 
     close_database();
 

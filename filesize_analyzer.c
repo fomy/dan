@@ -28,10 +28,6 @@ int get_filesize_distribution(){
     return 0;
 }
 
-/*static gboolean g_int_equal(gconstpointer a, gconstpointer b){*/
-    /*return *(int*)a == *(int*)b;*/
-/*}*/
-
 int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     int ret = init_iterator("CHUNK");
 
@@ -39,7 +35,8 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     memset(&r, 0, sizeof(r));
 
     int64_t sum = 0;
-    int count = 0;
+    /* file count */
+    int file_count = 0;
     int chunk_count = 0;
 
     GHashTable *files = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
@@ -77,12 +74,12 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
         }
         fprintf(stdout, "%" PRId64 "\n", file.fsize);
         sum += file.fsize;
-        count++;
+        file_count++;
     }
 
     g_hash_table_destroy(files);
 
-    fprintf(stderr, "avg: %10.2f\n", 1.0*sum/count);
+    fprintf(stderr, "avg: %10.2f\n", 1.0*sum/file_count);
     fprintf(stderr, "chunk count: %d\n", chunk_count);
 
     return 0;
