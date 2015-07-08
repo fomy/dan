@@ -139,7 +139,7 @@ static int read_hashfile(char *hashfile_name)
         memset(&file.minhash, 1, sizeof(file.minhash));
         file.fid = file_count;
 
-        parse_file_suffix(hashfile_curfile_path(handle), file.suffix, 8);
+        parse_file_suffix(hashfile_curfile_path(handle), file.suffix, sizeof(file.suffix) - 1);
 
         MD5_CTX ctx;
         MD5_Init(&ctx); 

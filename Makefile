@@ -8,7 +8,7 @@ CC = gcc
 MAKE = make
 
 all:
-	$(MAKE) collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer filesize_analyzer sequence
+	$(MAKE) collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer filesize_analyzer sequence filetype_analyzer
 
 collector:store data collector.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector store.o data.o libhashfile.o $(LIBS) -lcrypto
@@ -31,6 +31,9 @@ filesize_analyzer:store data filesize_analyzer.c
 sequence:store data sequence.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) sequence.c -o sequence store.o data.o libhashfile.o $(LIBS)
 
+filetype_analyzer:store data filetype_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) filetype_analyzer.c -o filetype_analyzer store.o data.o $(LIBS) -lglib
+
 store:store.c
 	$(CC) $(CFLAGS) -c store.c $(INCLUDE)
 
@@ -41,4 +44,4 @@ libhashfile:libhashfile.c
 	$(CC) $(CFLAGS) -c libhashfile.c
 
 clean:
-	rm *.o collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer filesize_analyzer sequence
+	rm *.o collector refs_analyzer locality_analyzer chunksize_analyzer filenum_analyzer filesize_analyzer sequence filetype_analyzer

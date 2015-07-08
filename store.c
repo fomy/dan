@@ -389,6 +389,9 @@ int search_file(struct file_rec* r){
         r->fsize = v->fsize;
         r->cnum = v->cnum;
         assert(r->fid == v->fid);
+        memcpy(r->hash, v->hash, sizeof(r->hash));
+        memcpy(r->minhash, v->minhash, sizeof(r->minhash));
+        memcpy(r->suffix, v->suffix, sizeof(r->suffix));
 
         /*fprintf(stdout, "exist\n");*/
         ret = 1;
@@ -518,6 +521,9 @@ int iterate_file(struct file_rec* r){
     r->fid = v->fid;
     r->fsize = v->fsize;
     r->cnum = v->cnum;
+    memcpy(r->hash, v->hash, sizeof(r->hash));
+    memcpy(r->minhash, v->minhash, sizeof(r->minhash));
+    memcpy(r->suffix, v->suffix, sizeof(r->suffix));
 
     return ret;
 }
