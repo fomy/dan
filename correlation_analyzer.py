@@ -9,8 +9,8 @@ def calcMeanAndDev(refs):
     mean = 0.
     dev_2 = 0.
     for ref in refs:
-        sum += refs 
-        sum_2 += refs*refs
+        sum += ref 
+        sum_2 += ref*ref
 
     mean = sum/len(refs)
     dev_2 = sum_2/len(refs) - mean*mean 
