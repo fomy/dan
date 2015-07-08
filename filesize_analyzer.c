@@ -3,6 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <glib.h>
+#include <inttypes.h>
 #include "store.h"
 
 int get_filesize_distribution(){
@@ -11,16 +12,16 @@ int get_filesize_distribution(){
     struct file_rec r;
     memset(&r, 0, sizeof(r));
 
-    float sum = 0;
+    int64_t sum = 0;
     int count = 0;
 
     while(iterate_file(&r) == 0){
-        fprintf(stdout, "%d\n", r.fsize);
+        fprintf(stdout, "%" PRId64 "\n", r.fsize);
         sum += r.fsize;
         count++;
     }
 
-    fprintf(stderr, "avg: %10.2f\n", sum/count);
+    fprintf(stderr, "avg: %10.2f\n", 1.0*sum/count);
 
     close_iterator();
 
@@ -37,7 +38,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
-    float sum = 0;
+    int64_t sum = 0;
     int count = 0;
     int chunk_count = 0;
 
@@ -74,14 +75,14 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
             fprintf(stderr, "Cannot find the required file %d in file db\n", file.fid);
             exit(-1);
         }
-        fprintf(stdout, "%d\n", file.fsize);
+        fprintf(stdout, "%" PRId64 "\n", file.fsize);
         sum += file.fsize;
         count++;
     }
 
     g_hash_table_destroy(files);
 
-    fprintf(stderr, "avg: %10.2f\n", sum/count);
+    fprintf(stderr, "avg: %10.2f\n", 1.0*sum/count);
     fprintf(stderr, "chunk count: %d\n", chunk_count);
 
     return 0;

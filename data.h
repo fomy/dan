@@ -58,9 +58,9 @@ struct region_rec{
 
 struct file_rec{
     int fid;
-    int fsize;
     /* chunk number */
     int cnum;
+    int64_t fsize;
     /* The file suffix */
     char suffix[8];
     /* The file hash */
