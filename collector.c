@@ -53,13 +53,14 @@ char col[] = {0x18,0x6,0xbd,0x7a,0x61,0x11};
 
 static void parse_file_suffix(char *path, char *suffix, int suffixlen){
     int i = strlen(path) - 1;
-    while(i>=0 && path[i]!= '.' && path[i]!='\\')
+    while(i>=0 && path[i]!= '.' && path[i]!='\\' && path[i]!='/')
         i--;
-    if(i<0 || path[i] == '\\')
+    if(i<0 || path[i] == '\\' || path[i] == '/')
         memset(suffix, 0, suffixlen);
-    else
+    else{
         assert(path[i] == '.');
         strncpy(suffix, &path[i+1], suffixlen);
+    }
 }
 
 static int read_hashfile(char *hashfile_name)
@@ -138,6 +139,8 @@ static int read_hashfile(char *hashfile_name)
         memset(&file.minhash, 1, sizeof(file.minhash));
         file.fid = file_count;
 
+        parse_file_suffix(hashfile_curfile_path(handle), file.suffix, 8);
+
         MD5_CTX ctx;
         MD5_Init(&ctx); 
 
@@ -154,8 +157,6 @@ static int read_hashfile(char *hashfile_name)
             if(memcmp(chunk.hash, file.minhash, chunk.hashlen) < 0){
                 memcpy(file.minhash, chunk.hash, chunk.hashlen);
             }
-
-            parse_file_suffix(hashfile_curfile_path(handle), file.suffix, 8);
 
             /* We find a hash collision */
             /*if(memcmp(chunk.hash, col, sizeof(col)) == 0){*/
