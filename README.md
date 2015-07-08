@@ -1,6 +1,8 @@
 # dan
 Deduplication Analyzer
 
+collector: go through the trace and build the chunk, file, region, and container databases
+
 refs\_analyzer + refs\_classifier.py: go through the chunk/region/container database and print all reference numbers
 
 locality\_analyzer: go through the chunk database and calc the distance between the first two references of a duplicate chunk
