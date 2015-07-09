@@ -67,6 +67,8 @@ struct file_rec{
     char hash[20];
     /* The minimal hash */
     char minhash[20];
+    /* The maximal hash */
+    char maxhash[20];
 };
 
 void reset_chunk_rec(struct chunk_rec *r);

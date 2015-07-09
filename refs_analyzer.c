@@ -37,6 +37,7 @@ void analyze_references(unsigned int lb, unsigned int rb){
     int total_references = 0;
     int intra_file = 0;
     int identical_file = 0;
+    int min_similar_file = 0;
     int similar_file = 0;
     int distinct_file = 0;
     while(iterate_chunk(&r) == 0){
@@ -52,7 +53,7 @@ void analyze_references(unsigned int lb, unsigned int rb){
             }
             
             /* analyze files */
-            int identical = 0, similar = 0;
+            int identical = 0, min_similar = 0, similar = 0;
             for(i=1; i<r.fcount; i++){
                 int j = 0;
                 for(; j<i; j++){
@@ -60,11 +61,15 @@ void analyze_references(unsigned int lb, unsigned int rb){
                         identical = 1;
                         break;
                     }else if(memcmp(files[i].minhash, files[j].minhash, sizeof(files[i].minhash)) == 0){
+                        min_similar = 1;
+                    }else if(memcmp(files[i].maxhash, files[j].maxhash, sizeof(files[i].maxhash)) == 0){
                         similar = 1;
                     }
                 }
                 if(identical == 1)
                     identical_file++;
+                else if(min_similar == 1)
+                    min_similar_file++;
                 else if(similar == 1)
                     similar_file++;
                 else
@@ -74,13 +79,13 @@ void analyze_references(unsigned int lb, unsigned int rb){
     }
 
     close_iterator();
-    assert(total_references == intra_file + identical_file + similar_file + distinct_file);
+    assert(total_references == intra_file + identical_file + min_similar_file + similar_file + distinct_file);
 
     /*fprintf(stderr, "%8s %8s %8s %8s %8s\n", "Total", "Intra", "Ident", "Simi", "Dist");*/
     /*fprintf(stdout, "%8d %8d %8d %8d %8d\n", total_references, intra_file, identical_file, similar_file, distinct_file);*/
-    fprintf(stderr, "%8s %8s %8s %8s\n", "Intra", "Ident", "Simi", "Dist");
-    fprintf(stdout, "%8.5f %8.5f %8.5f %8.5f\n", 1.0*intra_file/total_references, 1.0*identical_file/total_references, 
-            1.0*similar_file/total_references, 1.0*distinct_file/total_references);
+    fprintf(stderr, "%8s %8s %8s %8s %8s\n", "Intra", "Ident", "Min", "+Max", "Dist");
+    fprintf(stdout, "%8.5f %8.5f %8.5f %8.5f %8.5f\n", 1.0*intra_file/total_references, 1.0*identical_file/total_references, 
+            1.0*min_similar_file/total_references, 1.0*similar_file/total_references, 1.0*distinct_file/total_references);
 }
 
 

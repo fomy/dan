@@ -158,6 +158,9 @@ static int read_hashfile(char *hashfile_name)
                 memcpy(file.minhash, chunk.hash, chunk.hashlen);
             }
 
+            if(memcmp(chunk.hash, file.maxhash, chunk.hashlen) > 0){
+                memcpy(file.maxhash, chunk.hash, chunk.hashlen);
+            }
             /* We find a hash collision */
             /*if(memcmp(chunk.hash, col, sizeof(col)) == 0){*/
                 /*print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);*/
