@@ -13,6 +13,8 @@ refs\_analyzer: go through the chunk database and analyze the relationship betwe
 
 filesize\_analyzer: go through the chunk and file database to get file size distribution
 
-locality: go through the trace and output all reference numbers in logical or physical sequence
+locality: go through the trace and output all reference numbers in logical or physical locality
 
 correlation\_analyzer.py: With the output of locality\_sequence, calc the correlation coefficient of reference number
+
+filetype\_analyzer: go through the chunk and file database to get the fractions of popular file types
