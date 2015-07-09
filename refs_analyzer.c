@@ -60,9 +60,9 @@ void analyze_references(unsigned int lb, unsigned int rb){
                     if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) == 0){
                         identical = 1;
                         break;
-                    }else if(memcmp(files[i].minhash, files[j].minhash, sizeof(files[i].minhash)) == 0){
-                        min_similar = 1;
                     }else if(memcmp(files[i].maxhash, files[j].maxhash, sizeof(files[i].maxhash)) == 0){
+                        min_similar = 1;
+                    }else if(memcmp(files[i].minhash, files[j].minhash, sizeof(files[i].minhash)) == 0){
                         similar = 1;
                     }
                 }
