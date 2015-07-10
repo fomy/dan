@@ -1,5 +1,5 @@
-# dan
-Deduplication Analyzer
+# DAN 
+Deduplication ANalyzer
 
 Data Collector
 --------------
