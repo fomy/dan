@@ -8,10 +8,11 @@ Data Collector
 Reference Analyzer
 ------------------
 1. *refs\_distrbution\_exporter*: go through the chunk/region/container database and print all reference numbers
- > *refs\_classifier.py*: classify chunk/region/container according to reference numbers
+ * *refs\_classifier.py*: classify chunk/region/container according to reference numbers
 
 2. *refs_locality_exporter*: go through the trace and output all reference numbers in logical or physical locality
- > *refs_locality_analyzer.py*: with the output of locality\_sequence, calc the correlation coefficient of reference number
+ * *refs_locality_correlation_calc.py*: with the output of locality\_sequence, calc the correlation coefficient of reference number
+ * *refs_locality_distance_analyzer.py*: with the output of locality\_sequence, calc the correlation coefficient of reference number
 
 Chunk Analyzer
 --------------
