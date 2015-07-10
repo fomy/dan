@@ -47,16 +47,16 @@ def cluster5(filename):
     return count
 
 def cluster10(filename):
-    # (1,2], (2,3], (3,4], (4,5], (5,6], (6,7], (7,8], (8,16], (16,64], (64, infi)
+    # (1,2], (2,3], (3,4], (4,5], (5,6], (6,7], (7,8], (8,9], (9,10], (10, infi)
     count = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     file_object = open(filename, "r")
     try:
         for line in file_object:
             ref = float(line)
-            if ref > 64:
+            if ref > 10:
                 count[9] += 1
-            elif ref > 16:
+            elif ref > 9:
                 count[8] += 1
             elif ref > 8:
                 count[7] += 1
