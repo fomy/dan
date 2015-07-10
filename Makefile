@@ -8,31 +8,37 @@ CC = gcc
 MAKE = make
 
 all:
-	$(MAKE) collector refs_distribution distance_analyzer chunksize_analyzer refs_analyzer filesize_analyzer locality filetype_analyzer
+	$(MAKE) collector 
+	$(MAKE) refs_distribution_exporter refs_locality_exporter
+	$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
+	$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer
 
 collector:store data collector.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector store.o data.o libhashfile.o $(LIBS) -lcrypto
 
-refs_distribution:store data refs_distribution.c
-	$(CC) $(CFLAGS) $(INCLUDE) refs_distribution.c -o refs_distribution store.o data.o $(LIBS)
+# reference analyzer
+refs_distribution_exporter:store data refs_distribution_exporter.c
+	$(CC) $(CFLAGS) $(INCLUDE) refs_distribution_exporter.c -o refs_distribution_exporter store.o data.o $(LIBS)
 
-distance_analyzer:store data distance_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) distance_analyzer.c -o distance_analyzer store.o data.o $(LIBS)
+refs_locality_exporter:store data refs_locality_exporter.c libhashfile
+	$(CC) $(CFLAGS) $(INCLUDE) refs_locality_exporter.c -o refs_locality_exporter store.o data.o libhashfile.o $(LIBS)
 
-chunksize_analyzer:store data chunksize_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) chunksize_analyzer.c -o chunksize_analyzer store.o data.o $(LIBS)
+# chunk analyzer
+chunk_refs_distance_analyzer:store data chunk_refs_distance_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) chunk_refs_distance_analyzer.c -o chunk_refs_distance_analyzer store.o data.o $(LIBS)
 
-refs_analyzer:store data refs_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) refs_analyzer.c -o refs_analyzer store.o data.o $(LIBS)
+chunk_size_analyzer:store data chunk_size_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) chunk_size_analyzer.c -o chunk_size_analyzer store.o data.o $(LIBS)
 
-filesize_analyzer:store data filesize_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) filesize_analyzer.c -o filesize_analyzer store.o data.o $(LIBS) -lglib
+# file analyzer
+file_refs_source_analyzer:store data file_refs_source_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) file_refs_source_analyzer.c -o file_refs_source_analyzer store.o data.o $(LIBS)
 
-locality:store data locality.c libhashfile
-	$(CC) $(CFLAGS) $(INCLUDE) locality.c -o locality store.o data.o libhashfile.o $(LIBS)
+file_size_analyzer:store data file_size_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) file_size_analyzer.c -o file_size_analyzer store.o data.o $(LIBS) -lglib
 
-filetype_analyzer:store data filetype_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) filetype_analyzer.c -o filetype_analyzer store.o data.o $(LIBS) -lglib
+file_type_analyzer:store data file_type_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) file_type_analyzer.c -o file_type_analyzer store.o data.o $(LIBS) -lglib
 
 store:store.c
 	$(CC) $(CFLAGS) -c store.c $(INCLUDE)
@@ -44,4 +50,8 @@ libhashfile:libhashfile.c
 	$(CC) $(CFLAGS) -c libhashfile.c
 
 clean:
-	rm *.o collector refs_distribution distance_analyzer chunksize_analyzer refs_analyzer filesize_analyzer locality filetype_analyzer
+	rm *.o 
+	rm collector 
+	rm refs_distribution_exporter refs_locality_exporter
+	rm chunk_refs_distance_analyzer chunk_size_analyzer 
+	rm file_refs_source_analyzer file_size_analyzer file_type_analyzer

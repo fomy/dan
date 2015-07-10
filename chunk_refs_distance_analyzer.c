@@ -5,10 +5,11 @@
 #include <assert.h>
 #include "store.h"
 
-int get_distance_per_duplicate_chunk_all(unsigned int lb, unsigned int rb){
+int distance_between_all_chunk_references(unsigned int lb, unsigned int rb){
     int ret = init_iterator("CHUNK");
 
-    int max = 1;
+    int64_t sum = 0;
+    int count = 0;
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -21,34 +22,42 @@ int get_distance_per_duplicate_chunk_all(unsigned int lb, unsigned int rb){
                 dist = r.list[i] - prev;
                 assert(dist > 0);
                 fprintf(stdout, "%d\n", dist);
-                if(max < dist)
-                    max = dist;
                 prev = r.list[i];
+
+                sum += dist;
+                count++;
             }
         }
     }
 
-    fprintf(stderr, "max = %d\n", max);
+    fprintf(stderr, "avg. = %10.2f\n", 1.0*sum/count);
 
     close_iterator();
 
     return 0;
 }
 
-int get_distance_per_duplicate_chunk_first(unsigned int lb, unsigned int rb){
+int distance_between_first_two_chunk_references(unsigned int lb, unsigned int rb){
     int ret = init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
+
+    int64_t sum = 0;
+    int count = 0;
 
     while(iterate_chunk(&r) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             /*fprintf(stderr, "%d\n", r.rcount);*/
             assert(r.list[1] > r.list[0]);
             fprintf(stdout, "%d\n", r.list[1] - r.list[0]);
+            sum += r.list[1] - r.list[0];
+            count++;
         }
     }
 
+    fprintf(stderr, "avg. = %10.2f\n", 1.0*sum/count);
+    close_iterator();
     return 0;
 }
 
@@ -59,7 +68,7 @@ int main(int argc, char *argv[])
     int opt = 0;
     int all = 0;
     unsigned int lb = 2, rb =2;
-	while ((opt = getopt_long(argc, argv, "al:", NULL, NULL))
+	while ((opt = getopt_long(argc, argv, "al:r:", NULL, NULL))
 			!= -1) {
 		switch (opt) {
             case 'a':
@@ -67,22 +76,10 @@ int main(int argc, char *argv[])
                 all = 1;
                 break;
             case 'l':
-                if(strcasecmp(optarg, "Low") == 0){
-                    lb = 2;
-                    rb = 2;
-                }else if(strcasecmp(optarg, "Mid") == 0){
-                    lb = 3;
-                    rb = 4;
-                }else if(strcasecmp(optarg, "High") == 0){
-                    lb = 5;
-                    rb = -1;
-                }else if(strcasecmp(optarg, "All") == 0){
-                    lb = 2;
-                    rb = -1;
-                }else{
-                    fprintf(stderr, "Invalid level\n");
-                    return -1;
-                }
+                lb = atoi(optarg);
+                break;
+            case 'r':
+                rb = atoi(optarg);
                 break;
             default:
                 return -1;
@@ -96,9 +93,9 @@ int main(int argc, char *argv[])
     }
 
     if(all == 1)
-        get_distance_per_duplicate_chunk_all(lb, rb);
+        distance_between_all_chunk_references(lb, rb);
     else
-        get_distance_per_duplicate_chunk_first(lb, rb);
+        distance_between_first_two_chunk_references(lb, rb);
 
     close_database();
 

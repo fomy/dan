@@ -41,7 +41,7 @@
 /* "18:06:bd:7a:61:11" */
 char col[] = {0x18,0x6,0xbd,0x7a,0x61,0x11};
 
-static int output_sequence(char *hashfile_name, int locality)
+static int export_locality(char *hashfile_name, int locality)
 {
     char buf[MAXLINE];
     struct hashfile_handle *handle;
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-    ret = output_sequence(argv[optind], locality);
+    ret = export_locality(argv[optind], locality);
 
     close_database();
 
