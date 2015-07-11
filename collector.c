@@ -51,16 +51,11 @@ static void print_chunk_hash(uint64_t chunk_count, const uint8_t *hash,
 /* "18:06:bd:7a:61:11" */
 char col[] = {0x18,0x6,0xbd,0x7a,0x61,0x11};
 
-static void parse_file_suffix(char *path, char *suffix, int suffixlen){
+static char* parse_file_name(char *path){
     int i = strlen(path) - 1;
-    while(i>=0 && path[i]!= '.' && path[i]!='\\' && path[i]!='/')
+    while(i>=0 && path[i]!='\\' && path[i]!='/')
         i--;
-    if(i<0 || path[i] == '\\' || path[i] == '/')
-        memset(suffix, 0, suffixlen);
-    else{
-        assert(path[i] == '.');
-        strncpy(suffix, &path[i+1], suffixlen);
-    }
+    return &path[i+1];
 }
 
 static int read_hashfile(char *hashfile_name)
@@ -80,7 +75,6 @@ static int read_hashfile(char *hashfile_name)
     struct region_rec region;
     memset(&region, 0, sizeof(region));
     struct file_rec file;
-    /*memset(&file, 0, sizeof(file));*/
 
     /* statistics for generating IDs
      * ID starts from 0 */
@@ -139,7 +133,10 @@ static int read_hashfile(char *hashfile_name)
         memset(&file.minhash, 1, sizeof(file.minhash));
         file.fid = file_count;
 
-        parse_file_suffix(hashfile_curfile_path(handle), file.suffix, sizeof(file.suffix) - 1);
+        char* fname = parse_file_name(hashfile_curfile_path(handle));
+        file.fname = malloc(strlen(fname)+1);
+        strcpy(file.fname, fname);
+        printf("%s\n", file.fname);
 
         MD5_CTX ctx;
         MD5_Init(&ctx); 
@@ -279,6 +276,7 @@ static int read_hashfile(char *hashfile_name)
 
         /* file end; update it */
         update_file(&file);
+        free(file.fname);
         file_count++;
     }
 

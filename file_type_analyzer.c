@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include "store.h"
 
-struct suffix{
+struct suffix_stat{
     /* The number of files with this suffix */
     int64_t num;
     /* The size of files with this suffix */
@@ -21,15 +21,15 @@ static gboolean suffix_equal(gconstpointer a, gconstpointer b){
 #define FLAG_SIZE 1
 #define FLAG_NUM 2
 
-static gint suffix_num_cmp(struct suffix* a, struct suffix* b, gpointer data){
+static gint suffix_num_cmp(struct suffix_stat* a, struct suffix_stat* b, gpointer data){
     return b->num > a->num ? 1:-1;
 }
 
-static gint suffix_size_cmp(struct suffix* a, struct suffix* b, gpointer data){
+static gint suffix_size_cmp(struct suffix_stat* a, struct suffix_stat* b, gpointer data){
     return b->size > a->size ? 1:-1;
 }
 
-void get_selected_filetypes(GHashTable* types, int64_t *fs_count, int64_t* fs_size, unsigned int lb, unsigned int rb){
+void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_size, unsigned int lb, unsigned int rb){
     int ret = init_iterator("CHUNK");
 
     struct chunk_rec r;
@@ -59,7 +59,8 @@ void get_selected_filetypes(GHashTable* types, int64_t *fs_count, int64_t* fs_si
     g_hash_table_iter_init(&iter, files);
 
     struct file_rec file;
-    struct suffix *s = NULL;
+    struct suffix_stat *s = NULL;
+    char suffix[8];
     while(g_hash_table_iter_next(&iter, &key, &value)){
         file.fid = *(int*)key;
         if(search_file(&file) != 1){
@@ -67,17 +68,19 @@ void get_selected_filetypes(GHashTable* types, int64_t *fs_count, int64_t* fs_si
             exit(-1);
         }
 
-        if(strncmp(file.suffix, "edu,", 4) == 0){
-            strcpy(file.suffix, "edu,?");
-        }else if(strlen(file.suffix) == 0){
-            strcpy(file.suffix, ".None");
+        parse_file_suffix(file.fname, suffix, sizeof(suffix));
+
+        if(strncmp(suffix, "edu,", 4) == 0){
+            strcpy(suffix, "edu,?");
+        }else if(strlen(suffix) == 0){
+            strcpy(suffix, ".None");
         }
-        if((s = g_hash_table_lookup(types, file.suffix)) == NULL){
-            s = malloc(sizeof(struct suffix));
-            memcpy(s->suffix, file.suffix, sizeof(s->suffix));
+        if((s = g_hash_table_lookup(typeset, suffix)) == NULL){
+            s = malloc(sizeof(struct suffix_stat));
+            memcpy(s->suffix, suffix, sizeof(suffix));
             s->num = 0;
             s->size = 0;
-            g_hash_table_insert(types, s->suffix, s);
+            g_hash_table_insert(typeset, s->suffix, s);
         }
         s->num++;
         s->size += file.fsize;
@@ -89,28 +92,30 @@ void get_selected_filetypes(GHashTable* types, int64_t *fs_count, int64_t* fs_si
 
     g_hash_table_destroy(files);
 
-    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(types), *fs_count);
+    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(typeset), *fs_count);
 }
 
-void get_all_filetypes(GHashTable *types, int64_t *fs_count, int64_t *fs_size){
+void get_all_filetypes(GHashTable *typeset, int64_t *fs_count, int64_t *fs_size){
     int ret = init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
 
-    struct suffix *s = NULL;
+    struct suffix_stat *s = NULL;
+    char suffix[8];
     while(iterate_file(&r) == 0){
-        if(strncmp(r.suffix, "edu,", 4) == 0){
-            strcpy(r.suffix, "edu,?");
-        }else if(strlen(r.suffix) == 0){
-            strcpy(r.suffix, ".None");
+        parse_file_suffix(r.fname, suffix, sizeof(suffix));
+        if(strncmp(suffix, "edu,", 4) == 0){
+            strcpy(suffix, "edu,?");
+        }else if(strlen(suffix) == 0){
+            strcpy(suffix, ".None");
         }
-        if((s = g_hash_table_lookup(types, r.suffix)) == NULL){
-            s = malloc(sizeof(struct suffix));
-            memcpy(s->suffix, r.suffix, sizeof(s->suffix));
+        if((s = g_hash_table_lookup(typeset, suffix)) == NULL){
+            s = malloc(sizeof(struct suffix_stat));
+            memcpy(s->suffix, suffix, sizeof(suffix));
             s->num = 0;
             s->size = 0;
-            g_hash_table_insert(types, s->suffix, s);
+            g_hash_table_insert(typeset, s->suffix, s);
         }
         s->num++;
         s->size += r.fsize;
@@ -120,15 +125,15 @@ void get_all_filetypes(GHashTable *types, int64_t *fs_count, int64_t *fs_size){
     }
     close_iterator();
 
-    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(types), *fs_count);
+    fprintf(stderr, "totally %d suffix in %" PRId64 " files\n", g_hash_table_size(typeset), *fs_count);
 }
 
-void get_top_filetypes(GHashTable *types, int64_t fs_count, int64_t fs_size, int top){
+void get_top_filetypes(GHashTable *typeset, int64_t fs_count, int64_t fs_size, int top){
 
     GSequence* seq_num = g_sequence_new(NULL), *seq_size = g_sequence_new(NULL);
 
     GHashTableIter iter;
-    g_hash_table_iter_init(&iter, types);
+    g_hash_table_iter_init(&iter, typeset);
     gpointer key, value;
     while(g_hash_table_iter_next(&iter, &key, &value)){
         g_sequence_insert_sorted(seq_num, value, suffix_num_cmp, NULL);
@@ -146,8 +151,8 @@ void get_top_filetypes(GHashTable *types, int64_t fs_count, int64_t fs_size, int
     GSequenceIter* num_iter = g_sequence_get_begin_iter(seq_num);
     GSequenceIter* size_iter = g_sequence_get_begin_iter(seq_size);
     for(; i<top; i++){
-        struct suffix* num_suffix = g_sequence_get(num_iter);
-        struct suffix* size_suffix = g_sequence_get(size_iter);
+        struct suffix_stat* num_suffix = g_sequence_get(num_iter);
+        struct suffix_stat* size_suffix = g_sequence_get(size_iter);
         total_num += num_suffix->num;
         total_size += size_suffix->size;
         printf("%10s %10.4f %10s %10.4f\n", num_suffix->suffix, 1.0*num_suffix->num/fs_count, size_suffix->suffix, 1.0*size_suffix->size/fs_size);

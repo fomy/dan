@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "data.h"
 
 /* Use memset(r, 0, sizeof(*r)) to init */
@@ -58,3 +59,17 @@ int check_file_list(int *list, int fcount, int fid){
     }
     return 0;
 }
+
+void parse_file_suffix(char *path, char *suffix, int suffixlen){
+    int i = strlen(path) - 1;
+    while(i>=0 && path[i]!= '.' && path[i]!='\\' && path[i]!='/')
+        i--;
+    if(i<0 || path[i] == '\\' || path[i] == '/')
+        memset(suffix, 0, suffixlen);
+    else{
+        assert(path[i] == '.');
+        strncpy(suffix, &path[i+1], suffixlen);
+    }
+}
+
+

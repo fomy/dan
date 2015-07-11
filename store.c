@@ -369,6 +369,56 @@ int update_region(struct region_rec* r){
     return ret;
 }
 
+static void serial_file_rec(struct file_rec* r, DBT* value){
+    
+    value->size = sizeof(r->fid) + sizeof(r->cnum) + sizeof(r->fsize) +
+        sizeof(r->hash) + sizeof(r->minhash) + sizeof(r->maxhash) + strlen(r->fname);
+
+    assert(value->data == NULL);
+    value->data = malloc(value->size);
+
+    int off = 0;
+    memcpy(value->data + off, &r->fid, sizeof(r->fid));
+    off += sizeof(r->fid);
+    memcpy(value->data + off, &r->cnum, sizeof(r->cnum));
+    off += sizeof(r->cnum);
+    memcpy(value->data + off, &r->fsize, sizeof(r->fsize));
+    off += sizeof(r->fsize);
+    memcpy(value->data + off, r->hash, sizeof(r->hash));
+    off += sizeof(r->hash);
+    memcpy(value->data + off, r->minhash, sizeof(r->minhash));
+    off += sizeof(r->minhash);
+    memcpy(value->data + off, r->maxhash, sizeof(r->maxhash));
+    off += sizeof(r->maxhash);
+    memcpy(value->data + off, r->fname, strlen(r->fname));
+}
+
+static void unserial_file_rec(DBT *value, struct file_rec *r){
+
+    int len = 0;
+    memcpy(&r->fid, value->data, sizeof(r->fid));
+    len += sizeof(r->fid);
+    memcpy(&r->cnum, value->data + len, sizeof(r->cnum));
+    len += sizeof(r->cnum);
+    memcpy(&r->fsize, value->data + len, sizeof(r->fsize));
+    len += sizeof(r->fsize);
+    memcpy(r->hash, value->data + len, sizeof(r->hash));
+    len += sizeof(r->hash);
+    memcpy(r->minhash, value->data + len, sizeof(r->minhash));
+    len += sizeof(r->minhash);
+    memcpy(r->maxhash, value->data + len, sizeof(r->maxhash));
+    len += sizeof(r->maxhash);
+
+    assert(r->fname == NULL);
+    if(r->fname == NULL)
+        r->fname = malloc(value->size - len + 1);
+    else
+        r->fname = realloc(r->fname, value->size - len + 1);
+
+    memcpy(r->fname, value->data + len, value->size - len);
+    r->fname[value->size - len] = 0;
+
+}
 int search_file(struct file_rec* r){
     DBT key, value;
     memset(&key, 0, sizeof(DBT));
@@ -385,16 +435,7 @@ int search_file(struct file_rec* r){
     int ret = ddb.file_dbp->get(ddb.file_dbp, NULL, &key, &value, 0);
     if(ret == 0){
         /* success */
-        struct file_rec *v = value.data;
-        r->fsize = v->fsize;
-        r->cnum = v->cnum;
-        assert(r->fid == v->fid);
-        memcpy(r->hash, v->hash, sizeof(r->hash));
-        memcpy(r->minhash, v->minhash, sizeof(r->minhash));
-        memcpy(r->maxhash, v->maxhash, sizeof(r->maxhash));
-        memcpy(r->suffix, v->suffix, sizeof(r->suffix));
-
-        /*fprintf(stdout, "exist\n");*/
+        unserial_file_rec(&value, r);
         ret = 1;
     }else if(ret == DB_NOTFOUND){
         assert(value.data == NULL);
@@ -418,14 +459,14 @@ int update_file(struct file_rec* r){
     key.data = &r->fid;
     key.size = sizeof(r->fid);
 
-    value.data = r;
-    value.size = sizeof(*r);
+    serial_file_rec(r, &value);
 
     int ret = ddb.file_dbp->put(ddb.file_dbp, NULL, &key, &value, 0);
     if(ret != 0){
         fprintf(stderr, "Cannot put file: %s\n", db_strerror(ret));
     }
 
+    free(value.data);
     return ret;
 }
 
@@ -518,14 +559,7 @@ int iterate_file(struct file_rec* r){
         return ret;
     }
 
-    struct file_rec *v = value.data;
-    r->fid = v->fid;
-    r->fsize = v->fsize;
-    r->cnum = v->cnum;
-    memcpy(r->hash, v->hash, sizeof(r->hash));
-    memcpy(r->minhash, v->minhash, sizeof(r->minhash));
-    memcpy(r->maxhash, v->maxhash, sizeof(r->maxhash));
-    memcpy(r->suffix, v->suffix, sizeof(r->suffix));
+    unserial_file_rec(&value, r);
 
     return ret;
 }

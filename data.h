@@ -61,14 +61,14 @@ struct file_rec{
     /* chunk number */
     int cnum;
     int64_t fsize;
-    /* The file suffix */
-    char suffix[8];
     /* The file hash */
     char hash[20];
     /* The minimal hash */
     char minhash[20];
     /* The maximal hash */
     char maxhash[20];
+    /* The file name */
+    char *fname;
 };
 
 void reset_chunk_rec(struct chunk_rec *r);
@@ -78,5 +78,7 @@ void reset_region_rec(struct region_rec* r);
 int add_chunk_to_region(struct chunk_rec* c, struct region_rec* r);
 int add_region_to_container(struct region_rec* r, struct container_rec* c);
 int check_file_list(int *list, int fcount, int fid);
+
+void parse_file_suffix(char *path, char *suffix, int suffixlen);
 
 #endif
