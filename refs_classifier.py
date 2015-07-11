@@ -48,31 +48,33 @@ def cluster5(filename):
 
 def cluster10(filename):
     # (1,2], (2,3], (3,4], (4,5], (5,6], (6,7], (7,8], (8,9], (9,10], (10, infi)
-    count = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    count = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     file_object = open(filename, "r")
     try:
         for line in file_object:
             ref = float(line)
             if ref > 10:
-                count[9] += 1
+                count[10] += 1
             elif ref > 9:
-                count[8] += 1
+                count[9] += 1
             elif ref > 8:
-                count[7] += 1
+                count[8] += 1
             elif ref > 7:
-                count[6] += 1
+                count[7] += 1
             elif ref > 6:
-                count[5] += 1
+                count[6] += 1
             elif ref > 5:
-                count[4] += 1
+                count[5] += 1
             elif ref > 4:
-                count[3] += 1
+                count[4] += 1
             elif ref > 3:
-                count[2] += 1
+                count[3] += 1
             elif ref > 2:
-                count[1] += 1
+                count[2] += 1
             elif ref > 1:
+                count[1] += 1
+            elif ref > 0:
                 count[0] += 1
 
     finally:
@@ -84,7 +86,7 @@ if __name__ == "__main__":
 
     (opts, args) = getopt.getopt(sys.argv[1:], "c:", ["cluster"])
 
-    c = 3
+    c = 10
     for o, a in opts:
         if o in ["-c"]:
             c = int(a)
