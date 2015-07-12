@@ -44,6 +44,50 @@ static void print_hash(const uint8_t *hash,
     printf("\n");
 }
 
+/* sharing some chunks but with different hash/minhash */
+void collect_distinct_files(){
+    int ret = init_iterator("CHUNK");
+
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+
+    while(iterate_chunk(&r) == 0){
+
+        if(r.rcount > 1 && r.fcount > 1){
+            struct file_rec files[r.fcount];
+            memset(files, 0, sizeof(files));
+            int i = 0;
+            for(; i < r.fcount; i++){
+                files[i].fid = r.list[r.lsize/2 + i];
+                search_file(&files[i]);
+            }
+            for(i=1; i<r.fcount; i++){
+                if(memcmp(files[i].minhash, files[i-1].minhash, sizeof(files[i].minhash)) != 0){
+                    char suffix[8];
+                    printf("CHUK ");
+                    print_hash(r.hash, 6);
+                    int j = 0;
+                    for(; j<r.fcount; j++){
+                        parse_file_suffix(files[j].fname, suffix, sizeof(suffix));
+                        if(strncmp(suffix, "edu,", 4) == 0){
+                            strcpy(suffix, "edu,?");
+                        }else if(strlen(suffix) == 0){
+                            strcpy(suffix, ".None");
+                        }
+                        printf("FILE %d %" PRId64 " %s %s ", files[j].fid, files[j].fsize,
+                                files[j].fname, suffix);
+                        print_hash(files[j].minhash, 6);
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    close_iterator();
+
+}
 int collect_similar_files(){
     int ret = init_iterator("FILE");
     if(ret != 0)
@@ -170,9 +214,9 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     int flag = FLAG_IDENTICAL_FILES;
-	while ((opt = getopt_long(argc, argv, "isd", NULL, NULL))
-			!= -1) {
-		switch (opt) {
+    while ((opt = getopt_long(argc, argv, "isd", NULL, NULL))
+            != -1) {
+        switch (opt) {
             case 'i':
                 flag = FLAG_IDENTICAL_FILES;
                 break;
@@ -196,6 +240,8 @@ int main(int argc, char *argv[])
         collect_identical_files();
     else if(flag == FLAG_SIMILAR_FILES)
         collect_similar_files();
+    else if(flag == FLAG_DISTINCT_FILES)
+        collect_distinct_files();
 
     close_database();
 
