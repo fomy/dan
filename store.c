@@ -409,7 +409,6 @@ static void unserial_file_rec(DBT *value, struct file_rec *r){
     memcpy(r->maxhash, value->data + len, sizeof(r->maxhash));
     len += sizeof(r->maxhash);
 
-    assert(r->fname == NULL);
     if(r->fname == NULL)
         r->fname = malloc(value->size - len + 1);
     else
