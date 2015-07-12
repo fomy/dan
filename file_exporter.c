@@ -64,7 +64,7 @@ void collect_distinct_files(){
             for(i=1; i<r.fcount; i++){
                 if(memcmp(files[i].minhash, files[i-1].minhash, sizeof(files[i].minhash)) != 0){
                     char suffix[8];
-                    printf("CHUK ");
+                    printf("CHUK %d ", r.fcount);
                     print_hash(r.hash, 6);
                     int j = 0;
                     for(; j<r.fcount; j++){
@@ -88,6 +88,7 @@ void collect_distinct_files(){
     close_iterator();
 
 }
+
 int collect_similar_files(){
     int ret = init_iterator("FILE");
     if(ret != 0)
@@ -127,8 +128,7 @@ int collect_similar_files(){
     char suffix[8];
     while(g_hash_table_iter_next(&iter, &key, &value)){
         struct file_list* fl = value;
-        assert(g_list_length(fl->head) > 1);
-        printf("HASH ");
+        printf("HASH %d ", g_list_length(fl->head));
         print_hash(fl->hash, 6);
         GList* elem = g_list_first(fl->head);
         do{
@@ -186,8 +186,7 @@ int collect_identical_files(){
     char suffix[8];
     while(g_hash_table_iter_next(&iter, &key, &value)){
         struct file_list* fl = value;
-        assert(g_list_length(fl->head) > 1);
-        printf("HASH ");
+        printf("HASH %d ", g_list_length(fl->head));
         print_hash(fl->hash, 6);
         GList* elem = g_list_first(fl->head);
         do{
