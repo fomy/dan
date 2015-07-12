@@ -16,6 +16,7 @@ struct file_list {
 struct file_item {
     int64_t fsize;
     int fid;
+    char hash[20];
     char fname[0];
 };
 
@@ -43,7 +44,65 @@ static void print_hash(const uint8_t *hash,
     printf("\n");
 }
 
-static GHashTable* hashset;
+int collect_similar_files(){
+    int ret = init_iterator("FILE");
+    if(ret != 0)
+        return ret;
+
+    struct file_rec r;
+    memset(&r, 0, sizeof(r));
+
+    GHashTable* hashset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free_file_list);
+
+    while(iterate_file(&r) == 0){
+        if(r.fsize > 0){
+            struct file_list* fl = g_hash_table_lookup(hashset, r.minhash);
+            if(fl == NULL){
+                fl = malloc(sizeof(struct file_list));
+                fl->head = NULL;
+                memcpy(fl->hash, r.minhash, sizeof(r.minhash));
+                g_hash_table_insert(hashset, fl->hash, fl);
+            }
+
+            struct file_item* item = malloc(sizeof(*item) + strlen(r.fname) + 1);
+            item->fid = r.fid;
+            item->fsize = r.fsize;
+            memcpy(item->hash, r.hash, sizeof(r.hash));
+            strcpy(item->fname, r.fname);
+            fl->head = g_list_prepend(fl->head, item);
+        }
+    }
+
+    close_iterator();
+
+    g_hash_table_foreach_remove(hashset, only_one_item, NULL);
+
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, hashset);
+    char suffix[8];
+    while(g_hash_table_iter_next(&iter, &key, &value)){
+        struct file_list* fl = value;
+        assert(g_list_length(fl->head) > 1);
+        printf("HASH ");
+        print_hash(fl->hash, 6);
+        GList* elem = g_list_first(fl->head);
+        do{
+            struct file_item* item = elem->data;
+            parse_file_suffix(item->fname, suffix, sizeof(suffix));
+            if(strncmp(suffix, "edu,", 4) == 0){
+                strcpy(suffix, "edu,?");
+            }else if(strlen(suffix) == 0){
+                strcpy(suffix, ".None");
+            }
+            printf("FILE %d %" PRId64 " %s %s ", item->fid, item->fsize,
+                    item->fname, suffix);
+            print_hash(item->hash, 6);
+        }while((elem = g_list_next(elem)));
+    }
+
+    return 0;
+}
 
 int collect_identical_files(){
     int ret = init_iterator("FILE");
@@ -53,7 +112,7 @@ int collect_identical_files(){
     struct file_rec r;
     memset(&r, 0, sizeof(r));
 
-    hashset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free_file_list);
+    GHashTable* hashset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free_file_list);
 
     while(iterate_file(&r) == 0){
         if(r.fsize > 0){
@@ -90,6 +149,11 @@ int collect_identical_files(){
         do{
             struct file_item* item = elem->data;
             parse_file_suffix(item->fname, suffix, sizeof(suffix));
+            if(strncmp(suffix, "edu,", 4) == 0){
+                strcpy(suffix, "edu,?");
+            }else if(strlen(suffix) == 0){
+                strcpy(suffix, ".None");
+            }
             printf("FILE %d %" PRId64 " %s %s\n", item->fid, item->fsize,
                     item->fname, suffix);
         }while((elem = g_list_next(elem)));
@@ -98,19 +162,25 @@ int collect_identical_files(){
     return 0;
 }
 
+#define FLAG_IDENTICAL_FILES 1
+#define FLAG_SIMILAR_FILES 2
+#define FLAG_DISTINCT_FILES 3
 
 int main(int argc, char *argv[])
 {
     int opt = 0;
-    unsigned int lb = 1, rb =-1;
-	while ((opt = getopt_long(argc, argv, "l:r:", NULL, NULL))
+    int flag = FLAG_IDENTICAL_FILES;
+	while ((opt = getopt_long(argc, argv, "isd", NULL, NULL))
 			!= -1) {
 		switch (opt) {
-            case 'l':
-                lb = atoi(optarg);
+            case 'i':
+                flag = FLAG_IDENTICAL_FILES;
                 break;
-            case 'r':
-                rb = atoi(optarg);
+            case 's':
+                flag = FLAG_SIMILAR_FILES;
+                break;
+            case 'd':
+                flag = FLAG_DISTINCT_FILES;
                 break;
             default:
                 return -1;
@@ -122,7 +192,10 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-    collect_identical_files();
+    if(flag == FLAG_IDENTICAL_FILES)
+        collect_identical_files();
+    else if(flag == FLAG_SIMILAR_FILES)
+        collect_similar_files();
 
     close_database();
 
