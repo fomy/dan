@@ -77,18 +77,19 @@ def get_popular_types(trace):
 # -o output all suffix
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "no", ["cluster"])
+    (opts, args) = getopt.getopt(sys.argv[1:], "no")
 
     task = "check names"
     for o, a in opts:
         if o in ["-n"]:
             task = "check names"
-        elif o in ["o"]:
+        elif o in ["-o"]:
             task = "popular suffix"
 
+    print task
     trace = open(args[0], "r")
 
-    if task == "check name":
+    if task == "check names":
         check_identical_file_names(trace)
     else:
         get_popular_types(trace)
