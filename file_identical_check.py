@@ -57,19 +57,28 @@ def get_popular_types(trace):
         files = [ifl.split() for ifl in iflines]
         for file in files: 
             if file[-1] in suffixset:
-                suffixset[file[-1]] += int(file[2])
+                suffixset[file[-1]][0] += 1 
+                suffixset[file[-1]][1] += int(file[2])
             else:
-                suffixset[file[-1]] = int(file[2])
+                suffixset[file[-1]] = [1, int(file[2])]
 
     top_suffix = []
     for suf in suffixset:
-        top_suffix.append((suffixset[suf], suf))
+        top_suffix.append((suffixset[suf][0], suf))
         top_suffix = sorted(top_suffix, reverse=True)
         if(len(top_suffix) > 10):
             top_suffix.pop()
 
     print top_suffix
 
+    top_suffix = []
+    for suf in suffixset:
+        top_suffix.append((suffixset[suf][1], suf))
+        top_suffix = sorted(top_suffix, reverse=True)
+        if(len(top_suffix) > 10):
+            top_suffix.pop()
+
+    print top_suffix
 
 # find all identical files
 # -n check names
