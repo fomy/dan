@@ -1,6 +1,22 @@
+#!/usr/bin/python
 import sys
 import getopt
 import itertools
+
+def get_file_refs_distribution(trace):
+
+    total_refs = 0
+    total_files = 0
+    while True:
+        line = list(itertools.islice(trace, 1))
+        if len(line) == 0:
+            break;
+        fnum = int(line[0].split()[1])
+        iflines = list(itertools.islice(trace, fnum))
+        print fnum
+        total_files += 1
+        total_refs += fnum
+    print >>sys.stderr, "%8.5f" % (1.0*total_refs/total_files)
 
 def get_file_size(trace):
     mean = 0;
@@ -17,7 +33,6 @@ def get_file_size(trace):
             mean += size
             count += 1
             print size 
-
 
     print >>sys.stderr, "%.2f" % (1.0*mean/count)
 
@@ -62,7 +77,8 @@ def check_identical_file_names(trace):
         total_names += len(nameset)
         total_suffix += len(suffixset)
 
-    print >>sys.stderr, logical_files, physical_files, total_names, total_suffix
+    print >>sys.stderr, "%10s %10s %10s %10s" % ("Logical", "Physical", "Names", "Suffix")
+    print >>sys.stderr, "%10d %10d %10d %10d" % (logical_files, physical_files, total_names, total_suffix)
 
 def get_popular_types(trace):
     suffixset = {}
@@ -88,6 +104,7 @@ def get_popular_types(trace):
         if(len(top_suffix) > 10):
             top_suffix.pop()
 
+    print "In number:"
     print top_suffix
 
     top_suffix = []
@@ -97,33 +114,26 @@ def get_popular_types(trace):
         if(len(top_suffix) > 10):
             top_suffix.pop()
 
+    print "In size:"
     print top_suffix
 
 # find all identical files
 # -n check names
 # -s check suffix
-# -o output all suffix
+# -p output popular suffix
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "nos")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "npsd")
 
-    task = "check names"
+    trace = open(args[0], "r")
     for o, a in opts:
         if o in ["-n"]:
-            task = "check names"
-        elif o in ["-o"]:
-            task = "popular suffix"
+            check_identical_file_names(trace)
+        elif o in ["-p"]:
+            get_popular_types(trace)
         elif o in ["-s"]:
-            task = "file size"
-
-    print task
-    trace = open(args[0], "r")
-
-    if task == "check names":
-        check_identical_file_names(trace)
-    elif task == "popular suffix":
-        get_popular_types(trace)
-    else:
-        get_file_size(trace)
+            get_file_size(trace)
+        elif o in ["-d"]:
+            get_file_refs_distribution(trace)
 
     trace.close()
