@@ -130,7 +130,7 @@ static int read_hashfile(char *hashfile_name)
 
         /* file start */
         memset(&file, 0, sizeof(file));
-        memset(&file.minhash, 1, sizeof(file.minhash));
+        memset(&file.minhash, 0xff, sizeof(file.minhash));
         file.fid = file_count;
 
         char* fname = parse_file_name(hashfile_curfile_path(handle));

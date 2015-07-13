@@ -119,6 +119,7 @@ int collect_similar_files(){
 
     GHashTable* hashset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free_file_list);
 
+    int empty_files = 0;
     while(iterate_file(&r) == 0){
         if(r.fsize > 0){
             struct file_list* fl = g_hash_table_lookup(hashset, r.minhash);
@@ -135,11 +136,13 @@ int collect_similar_files(){
             memcpy(item->hash, r.hash, sizeof(r.hash));
             strcpy(item->fname, r.fname);
             fl->head = g_list_prepend(fl->head, item);
-        }
+        }else
+            empty_files++;
     }
 
     close_iterator();
 
+    fprintf(stderr, "%d bins, %d empty files\n", g_hash_table_size(hashset), empty_files);
     g_hash_table_foreach_remove(hashset, only_one_item, NULL);
 
     GHashTableIter iter;

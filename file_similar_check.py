@@ -12,6 +12,7 @@ def get_file_size_coefficient(trace):
         if len(line) == 0:
             break;
         fnum = int(line[0].split()[1])
+        assert(fnum > 1)
         sflines = list(itertools.islice(trace, fnum))
 
         m = 0
@@ -41,6 +42,7 @@ def get_file_size_distribution(trace):
         if len(line) == 0:
             break;
         fnum = int(line[0].split()[1])
+        assert(fnum > 1)
         sflines = list(itertools.islice(trace, fnum))
 
         for line in sflines:
