@@ -172,7 +172,7 @@ int collect_similar_files(){
         }while((elem = g_list_next(elem)));
     }
 
-    fprintf(stderr, "%d similar pair, %d of which are all identical files\n", g_hash_table_size(hashset), iden_count);
+    fprintf(stderr, "%d bins, from %d of which all files are identical\n", g_hash_table_size(hashset), iden_count);
     g_hash_table_destroy(hashset);
 
     return 0;
