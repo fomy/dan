@@ -79,17 +79,11 @@ if __name__ == "__main__":
 
     (opts, args) = getopt.getopt(sys.argv[1:], "no", ["cluster"])
 
-    col = -1
     task = "check names"
     for o, a in opts:
         if o in ["-n"]:
-            col = 3
             task = "check names"
-        elif o in ["-s"]:
-            col = -1
-            task = "check suffix"
         elif o in ["o"]:
-            col = -1
             task = "popular suffix"
 
     trace = open(args[0], "r")
