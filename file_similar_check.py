@@ -35,7 +35,7 @@ def get_file_size_coefficient(trace):
     print >>sys.stderr, "mean = %8.5f" % (1.0*co/co_count)
 
 def get_file_size_distribution(trace):
-    mean = 0;
+    sum = 0;
     count = 0
     while True:
         line = list(itertools.islice(trace, 1))
@@ -47,11 +47,11 @@ def get_file_size_distribution(trace):
 
         for line in sflines:
             size = int(line.split()[2])
-            mean += size
+            sum += size
             count += 1
             print size 
 
-    print >>sys.stderr, "mean = %8.5f" % (1.0*mean/count)
+    print >>sys.stderr, "mean = %8.5f" % (1.0*sum/count)
 
 def get_popular_types(trace):
     # {'suffix' : [file number, file size], ...}
@@ -71,7 +71,6 @@ def get_popular_types(trace):
             else:
                 suffixset[file[-2]] = [1, int(file[2])]
 
-    print "In number:"
     top_suffix = []
     for suf in suffixset:
         top_suffix.append((suffixset[suf][0], suf))
@@ -79,7 +78,7 @@ def get_popular_types(trace):
         if(len(top_suffix) > 10):
             top_suffix.pop()
 
-    print "In size:"
+    print "In number:"
     print top_suffix
 
     top_suffix = []
@@ -89,6 +88,7 @@ def get_popular_types(trace):
         if(len(top_suffix) > 10):
             top_suffix.pop()
 
+    print "In size:"
     print top_suffix
 
 if __name__ == "__main__":

@@ -98,7 +98,7 @@ void collect_distinct_files(){
 
 }
 
-static int check_identical_files(struct file_list* fl){
+static int all_files_are_identical(struct file_list* fl){
     GList* cur = fl->head;
     GList* next = NULL;
     while((next = g_list_next(cur))){
@@ -142,7 +142,7 @@ int collect_similar_files(){
 
     close_iterator();
 
-    fprintf(stderr, "%d bins, %d empty files\n", g_hash_table_size(hashset), empty_files);
+    fprintf(stderr, "totally %d bins, %d empty files\n", g_hash_table_size(hashset), empty_files);
     g_hash_table_foreach_remove(hashset, only_one_item, NULL);
 
     GHashTableIter iter;
@@ -152,8 +152,8 @@ int collect_similar_files(){
     int iden_count = 0;
     while(g_hash_table_iter_next(&iter, &key, &value)){
         struct file_list* fl = value;
-        /* remove identical files */
-        if(check_identical_files(fl)){
+        if(all_files_are_identical(fl)){
+            /* excluding the bins of all identical files */
             iden_count++;
             continue;
         }
@@ -175,7 +175,7 @@ int collect_similar_files(){
         }while((elem = g_list_next(elem)));
     }
 
-    fprintf(stderr, "%d bins, from %d of which all files are identical\n", g_hash_table_size(hashset), iden_count);
+    fprintf(stderr, "%d bins (size > 1), from %d of which all files are identical\n", g_hash_table_size(hashset), iden_count);
     g_hash_table_destroy(hashset);
 
     return 0;
@@ -236,6 +236,7 @@ int collect_identical_files(){
     }
 
     g_hash_table_destroy(hashset);
+
     return 0;
 }
 

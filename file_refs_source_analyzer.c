@@ -59,9 +59,9 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
             
             /* analyze files */
             int identical = 0, min_similar = 0, similar = 0, same_suffix = 0;
-            for(i=1; i<r.fcount; i++){
-                int j = 0;
-                for(; j<i; j++){
+            for(i=0; i<r.fcount-1; i++){
+                int j = i+1;
+                for(; j<r.fcount; j++){
                     if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) == 0){
                         identical = 1;
                         break;
