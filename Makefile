@@ -51,7 +51,7 @@ libhashfile:libhashfile.c
 	$(CC) $(CFLAGS) -c libhashfile.c
 
 clean:
-	rm *.o libstore.so 
+	rm *.o
 	rm collector 
 	rm refs_distribution_exporter refs_locality_exporter
 	rm chunk_refs_distance_analyzer chunk_size_analyzer 
