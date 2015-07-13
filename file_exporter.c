@@ -34,6 +34,12 @@ static gboolean hash_equal(gconstpointer a, gconstpointer b){
     return memcmp(a, b, 20) == 0;
 }
 
+static gboolean file_equal(gconstpointer a, gconstpointer b){
+    struct file_item* fa = a;
+    struct file_item* fb = b;
+    return hash_equal(fa->hash, fb->hash);
+}
+
 static void print_hash(const uint8_t *hash,
         int hash_size_in_bytes)
 {
@@ -51,6 +57,7 @@ void collect_distinct_files(){
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
+    int count = 0;
     while(iterate_chunk(&r) == 0){
 
         if(r.rcount > 1 && r.fcount > 1){
@@ -79,14 +86,27 @@ void collect_distinct_files(){
                         print_hash(files[j].minhash, 6);
                     }
 
+                    count++;
                     break;
                 }
             }
         }
     }
+    fprintf(stderr, "%d chunks are shared between distinct files\n", count);
 
     close_iterator();
 
+}
+
+static int check_identical_files(struct file_list* fl){
+    GList* cur = fl->head;
+    GList* next = NULL;
+    while((next = g_list_next(cur))){
+        if(!file_equal(cur->data, next->data))
+            return 0;
+        cur = next;
+    }
+    return 1;
 }
 
 int collect_similar_files(){
@@ -126,8 +146,15 @@ int collect_similar_files(){
     gpointer key, value;
     g_hash_table_iter_init(&iter, hashset);
     char suffix[8];
+    int iden_count = 0;
     while(g_hash_table_iter_next(&iter, &key, &value)){
         struct file_list* fl = value;
+        /* remove identical files */
+        if(check_identical_files(fl)){
+            iden_count++;
+            continue;
+        }
+
         printf("HASH %d ", g_list_length(fl->head));
         print_hash(fl->hash, 6);
         GList* elem = g_list_first(fl->head);
@@ -144,6 +171,9 @@ int collect_similar_files(){
             print_hash(item->hash, 6);
         }while((elem = g_list_next(elem)));
     }
+
+    fprintf(stderr, "%d similar pair, %d of which are all identical files\n", g_hash_table_size(hashset), iden_count);
+    g_hash_table_destroy(hashset);
 
     return 0;
 }
@@ -202,6 +232,7 @@ int collect_identical_files(){
         }while((elem = g_list_next(elem)));
     }
 
+    g_hash_table_destroy(hashset);
     return 0;
 }
 
