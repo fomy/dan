@@ -282,6 +282,7 @@ static int read_hashfile(char *hashfile_name)
     hashfile_close(handle);
 
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
+    printf("%d files\n", file_count);
     return 0;
 }
 
