@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     int all = 0;
-    unsigned int lb = 2, rb =2;
+    unsigned int lb = 2, rb = -1;
 	while ((opt = getopt_long(argc, argv, "al:r:", NULL, NULL))
 			!= -1) {
 		switch (opt) {
