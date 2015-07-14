@@ -16,13 +16,13 @@ void get_file2ref_ratio(unsigned int lb, unsigned int rb){
 
     while(iterate_chunk(&r, 0) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
-            fprintf(stdout, "%10.2f\n", 1.0*r.fcount/r.rcount);
+            fprintf(stdout, "%10.5f\n", 1.0*r.fcount/r.rcount);
             sum += 1.0*r.fcount/r.rcount;
             count++;
         }
     }
 
-    fprintf(stderr, "avg: %10.2f\n", sum/count);
+    fprintf(stderr, "avg: %10.5f\n", sum/count);
 
     close_iterator();
 
@@ -110,7 +110,8 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     unsigned int lb = 2, rb =-1;
-	while ((opt = getopt_long(argc, argv, "l:r:", NULL, NULL))
+    int task = 0;
+	while ((opt = getopt_long(argc, argv, "l:r:t", NULL, NULL))
 			!= -1) {
 		switch (opt) {
             case 'l':
@@ -118,6 +119,9 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 rb = atoi(optarg);
+                break;
+            case 't':
+                task = 1;
                 break;
             default:
                 return -1;
@@ -131,8 +135,10 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-    /*get_file2ref_ratio(lb, rb);*/
-    analyze_references_source(lb, rb);
+    if(task == 1)
+        get_file2ref_ratio(lb, rb);
+    else
+        analyze_references_source(lb, rb);
 
     close_database();
 
