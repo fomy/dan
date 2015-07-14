@@ -501,17 +501,10 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
     unserial_chunk_rec(&value, r);
 
-    int m = 0;
-    for(; m<r->rcount; m++){
-        printf("%d,", r->list[r->lsize/2+m]);
-    }
-    puts("");
-
     if(dedup_fid && r->rcount > r->fcount){
         int* list = &r->list[r->lsize/2];
         int step = 0, i;
         for(i=1; i<r->rcount; i++){
-            printf("%d == %d\n", list[i], list[i-1]);
             if(list[i] == list[i-1]){
                 step++;
                 continue;
@@ -521,7 +514,7 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
         if(step != (r->rcount - r->fcount)){
             printf("%d, %d, %d\n", step, r->rcount, r->fcount);
-            exit(-2);
+            exit(-1);
         }
     }
 
