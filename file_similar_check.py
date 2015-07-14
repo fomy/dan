@@ -93,10 +93,74 @@ def get_popular_types(trace):
 
 # Are similar files with identical suffixes
 #def check_types(trace):
+def check_types(trace):
+    bin_num = 0
+    file_num = 0
+    suffix_num = 0
+    while True:
+        line = list(itertools.islice(trace, 1))
+        if len(line) == 0:
+            break;
+        fnum = int(line[0].split()[1])
+
+        bin_num += 1
+        file_num += fnum
+
+        iflines = list(itertools.islice(trace, fnum))
+        sufs = [ifl.split()[-1] for ifl in iflines]
+
+        suffixset = {}
+        for suf in sufs:
+            if suf in suffixset:
+                suffixset[suf] += 1
+            else:
+                suffixset[suf] = 1
+
+        suffix_num += len(suffixset)
+
+    print >>sys.stderr, "%10s %10s %10s" % ("Bins", "Files", "Suffix")
+    print >>sys.stderr, "%10d %10d %10d" % (bin_num, file_num, suffix_num)
+
+def get_popular_types(trace):
+    suffixset = {}
+    while True:
+        line = list(itertools.islice(trace, 1))
+        if len(line) == 0:
+            break;
+        fnum = int(line[0].split()[1])
+        iflines = list(itertools.islice(trace, fnum))
+
+        files = [ifl.split() for ifl in iflines]
+        for file in files: 
+            if file[-1] in suffixset:
+                suffixset[file[-1]][0] += 1 
+                suffixset[file[-1]][1] += int(file[2])
+            else:
+                suffixset[file[-1]] = [1, int(file[2])]
+
+    top_suffix = []
+    for suf in suffixset:
+        top_suffix.append((suffixset[suf][0], suf))
+        top_suffix = sorted(top_suffix, reverse=True)
+        if(len(top_suffix) > 10):
+            top_suffix.pop()
+
+    print "In number:"
+    print top_suffix
+
+    top_suffix = []
+    for suf in suffixset:
+        top_suffix.append((suffixset[suf][1], suf))
+        top_suffix = sorted(top_suffix, reverse=True)
+        if(len(top_suffix) > 10):
+            top_suffix.pop()
+
+    print "In size:"
+    print top_suffix
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "dcp")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "dcpt")
 
     trace = open(args[0], "r")
     for o, a in opts:
@@ -106,5 +170,7 @@ if __name__ == "__main__":
             get_file_size_coefficient(trace)
         elif o in ["-p"]:
             get_popular_types(trace)
+        elif o in ["-t"]:
+            check_types(trace)
 
     trace.close()
