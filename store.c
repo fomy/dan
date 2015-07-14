@@ -512,10 +512,7 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
             list[i-step] = list[i];
         }
 
-        if(step != (r->rcount - r->fcount)){
-            printf("%d, %d, %d\n", step, r->rcount, r->fcount);
-            exit(-1);
-        }
+        assert(step == r->rcount - r->fcount);
     }
 
     return ret;
