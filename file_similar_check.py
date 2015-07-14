@@ -117,6 +117,8 @@ def check_types(trace):
                 suffixset[suf] = 1
 
         suffix_num += len(suffixset)
+        if len(suffixset) > 1:
+            print suffixset
 
     print >>sys.stderr, "%10s %10s %10s" % ("Bins", "Files", "Suffix")
     print >>sys.stderr, "%10d %10d %10d" % (bin_num, file_num, suffix_num)
