@@ -82,6 +82,7 @@ static int read_hashfile(char *hashfile_name)
     int container_count = 0;
     int region_count = 0;
     int file_count = 0;
+    int empty_files = 0;
 
     int dup_count = 0;
 
@@ -273,15 +274,19 @@ static int read_hashfile(char *hashfile_name)
         MD5_Final(file.hash, &ctx);
 
         /* file end; update it */
-        update_file(&file);
+        if(file.fsize > 0){
+            update_file(&file);
+            file_count++;
+        }else{
+            empty_files++;
+        }
         free(file.fname);
-        file_count++;
     }
 
     hashfile_close(handle);
 
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
-    printf("%d files\n", file_count);
+    printf("%d files, excluding %d empty files\n", file_count, empty_files);
     return 0;
 }
 

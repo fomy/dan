@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <glib.h>
 #include <inttypes.h>
+#include <assert.h>
 #include "store.h"
 
 int get_filesize_distribution(){
@@ -16,6 +17,7 @@ int get_filesize_distribution(){
     int count = 0;
 
     while(iterate_file(&r) == 0){
+        assert(r.fsize > 0);
         fprintf(stdout, "%" PRId64 "\n", r.fsize);
         sum += r.fsize;
         count++;
