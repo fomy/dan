@@ -107,7 +107,7 @@ def check_types(trace):
         file_num += fnum
 
         iflines = list(itertools.islice(trace, fnum))
-        sufs = [ifl.split()[-1] for ifl in iflines]
+        sufs = [ifl.split()[-2] for ifl in iflines]
 
         suffixset = {}
         for suf in sufs:
@@ -132,11 +132,11 @@ def get_popular_types(trace):
 
         files = [ifl.split() for ifl in iflines]
         for file in files: 
-            if file[-1] in suffixset:
-                suffixset[file[-1]][0] += 1 
-                suffixset[file[-1]][1] += int(file[2])
+            if file[-2] in suffixset:
+                suffixset[file[-2]][0] += 1 
+                suffixset[file[-2]][1] += int(file[2])
             else:
-                suffixset[file[-1]] = [1, int(file[2])]
+                suffixset[file[-2]] = [1, int(file[2])]
 
     top_suffix = []
     for suf in suffixset:
