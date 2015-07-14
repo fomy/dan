@@ -148,11 +148,12 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     off += sizeof(r->cratio);
     memcpy(value->data + off, &r->fcount, sizeof(r->fcount));
     off += sizeof(r->fcount);
-    int i = 0;
-    for(; i < r->rcount*2; i++){
-        memcpy(value->data + off, &r->list[i], sizeof(int));
-        off += sizeof(int);
-    }
+
+    memcpy(value->data + off, r->list, sizeof(int) * r->rcount);
+    off += sizeof(int) * r->rcount;
+    memcpy(value->data + off, &r->list[r->lsize/2], sizeof(int) * r->rcount);
+    off += sizeof(int) * r->rcount;
+
     assert(off == value->size);
 }
 
@@ -178,11 +179,12 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
         r->lsize = r->rcount * 2 + 2;
         r->list = realloc(r->list, sizeof(int) * r->lsize);
     }
-    int i = 0;
-    for(; i < r->rcount * 2; i++){
-        memcpy(&r->list[i], value->data + len, sizeof(int));
-        len += sizeof(int);
-    }
+
+    memcpy(r->list, value->data + len, sizeof(int) * r->rcount);
+    len += sizeof(int) * r->rcount;
+    memcpy(&r->list[r->lsize/2], value->data + len, sizeof(int) * r->rcount);
+    len += sizeof(int) * r->rcount;
+
     assert(len == value->size);
 }
 
@@ -499,17 +501,28 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
     unserial_chunk_rec(&value, r);
 
+    int m = 0;
+    for(; m<r->rcount; m++){
+        printf("%d,", r->list[r->lsize/2+m]);
+    }
+    puts("");
+
     if(dedup_fid && r->rcount > r->fcount){
-        char* list = &r->list[r->lsize/2];
+        int* list = &r->list[r->lsize/2];
         int step = 0, i;
         for(i=1; i<r->rcount; i++){
+            printf("%d == %d\n", list[i], list[i-1]);
             if(list[i] == list[i-1]){
                 step++;
                 continue;
             }
             list[i-step] = list[i];
         }
-        assert(step == r->rcount - r->fcount);
+
+        if(step != (r->rcount - r->fcount)){
+            printf("%d, %d, %d\n", step, r->rcount, r->fcount);
+            exit(-2);
+        }
     }
 
     return ret;
