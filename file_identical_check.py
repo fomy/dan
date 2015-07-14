@@ -43,7 +43,7 @@ def check_one_file(one, others):
 
     return False
 
-def check_identical_file_names(trace):
+def check_name_and_type(trace):
     logical_files = 0
     physical_files = 0
     total_names = 0
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     trace = open(args[0], "r")
     for o, a in opts:
         if o in ["-n"]:
-            check_identical_file_names(trace)
+            check_name_and_type(trace)
         elif o in ["-p"]:
             get_popular_types(trace)
         elif o in ["-s"]:

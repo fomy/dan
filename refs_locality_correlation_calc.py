@@ -36,7 +36,7 @@ def calcCorrelation(refs, mean, dev_2, lag):
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "bl:", ["binary", "lag"])
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "bl:", ["binary", "lag"])
 
     binary = False
     lag = 1

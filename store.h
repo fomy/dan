@@ -21,7 +21,7 @@ int update_file(struct file_rec* r);
 
 int init_iterator(char *type);
 void close_iterator();
-int iterate_chunk(struct chunk_rec* r);
+int iterate_chunk(struct chunk_rec* r, int dedup_fid);
 int iterate_container(struct container_rec* r);
 int iterate_region(struct region_rec* r);
 int iterate_file(struct file_rec* r);

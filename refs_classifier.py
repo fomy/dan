@@ -84,7 +84,7 @@ def cluster10(filename):
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "c:", ["cluster"])
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "c:", ["cluster"])
 
     c = 10
     for o, a in opts:

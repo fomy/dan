@@ -13,7 +13,7 @@ int get_chunksize_distribution(unsigned int lb, unsigned int rb){
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 0) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             fprintf(stdout, "%d\n", r.csize);
             sum += r.csize;

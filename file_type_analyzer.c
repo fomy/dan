@@ -38,7 +38,7 @@ void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_
     GHashTable *files = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
 
     /*fprintf(stderr, "Find the files\n");*/
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 1) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             /* Get all files' IDs */
             int i = 0;

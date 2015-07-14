@@ -14,7 +14,7 @@ void get_file2ref_ratio(unsigned int lb, unsigned int rb){
     float sum = 0;
     int count = 0;
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 0) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             fprintf(stdout, "%10.2f\n", 1.0*r.fcount/r.rcount);
             sum += 1.0*r.fcount/r.rcount;
@@ -41,7 +41,7 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
     int similar_file = 0;
     int same_suffix_file = 0;
     int distinct_file = 0;
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 1) == 0){
 
         if(r.rcount >= lb && r.rcount <= rb){
             total_references += r.rcount - 1;

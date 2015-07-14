@@ -253,14 +253,13 @@ static int read_hashfile(char *hashfile_name)
             assert(chunk.lsize >= (chunk.rcount + 1) * 2);
 
             /* TO-DO: update the chunk.list */
-            chunk.list[chunk.rcount] = chunk_count;
-            chunk.rcount++;
-            
             /* determine whether we need to update file list */
-            if(!check_file_list(&chunk.list[chunk.lsize/2], chunk.fcount, file_count)){
-                chunk.list[chunk.lsize/2 + chunk.fcount] = file_count;
+            if(!check_file_list(&chunk.list[chunk.lsize/2], chunk.rcount, file_count))
                 chunk.fcount++;
-            }
+
+            chunk.list[chunk.rcount] = chunk_count;
+            chunk.list[chunk.lsize/2 + chunk.rcount] = file_count;
+            chunk.rcount++;
 
             ret = update_chunk(&chunk);
 

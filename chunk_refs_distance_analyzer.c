@@ -14,7 +14,7 @@ int distance_between_all_chunk_references(unsigned int lb, unsigned int rb){
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 0) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             int prev = r.list[0];
             int i = 1, dist;
@@ -46,7 +46,7 @@ int distance_between_first_two_chunk_references(unsigned int lb, unsigned int rb
     int64_t sum = 0;
     int count = 0;
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 0) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             /*fprintf(stderr, "%d\n", r.rcount);*/
             assert(r.list[1] > r.list[0]);

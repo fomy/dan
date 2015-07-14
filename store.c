@@ -131,7 +131,7 @@ void close_database(){
 static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     
     value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
-        sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->fcount) +  (r->rcount + r->fcount) * sizeof(int);
+        sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->fcount) +  2 * r->rcount * sizeof(int);
 
     value->data = malloc(value->size);
 
@@ -149,13 +149,8 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     memcpy(value->data + off, &r->fcount, sizeof(r->fcount));
     off += sizeof(r->fcount);
     int i = 0;
-    for(; i < r->rcount; i++){
+    for(; i < r->rcount*2; i++){
         memcpy(value->data + off, &r->list[i], sizeof(int));
-        off += sizeof(int);
-    }
-    i = 0;
-    for(; i < r->fcount; i++){
-        memcpy(value->data + off, &r->list[r->lsize/2 + i], sizeof(int));
         off += sizeof(int);
     }
     assert(off == value->size);
@@ -184,12 +179,8 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
         r->list = realloc(r->list, sizeof(int) * r->lsize);
     }
     int i = 0;
-    for(; i < r->rcount; i++){
+    for(; i < r->rcount * 2; i++){
         memcpy(&r->list[i], value->data + len, sizeof(int));
-        len += sizeof(int);
-    }
-    for(i = 0 ; i < r->fcount; i++){
-        memcpy(&r->list[r->lsize/2 + i], value->data + len, sizeof(int));
         len += sizeof(int);
     }
     assert(len == value->size);
@@ -490,7 +481,9 @@ void close_iterator(){
     ddb.cursorp->close(ddb.cursorp);
 }
 
-int iterate_chunk(struct chunk_rec* r){
+/* dedup_fid = 1: remove duplicate file id in file list
+ * dedup_fid = 0: do not remove */
+int iterate_chunk(struct chunk_rec* r, int dedup_fid){
     DBT key, value;
     memset(&key, 0, sizeof(DBT));
     memset(&value, 0, sizeof(DBT));
@@ -505,6 +498,19 @@ int iterate_chunk(struct chunk_rec* r){
     r->hashlen = key.size;
 
     unserial_chunk_rec(&value, r);
+
+    if(dedup_fid && r->rcount > r->fcount){
+        char* list = &r->list[r->lsize/2];
+        int step = 0, i;
+        for(i=1; i<r->rcount; i++){
+            if(list[i] == list[i-1]){
+                step++;
+                continue;
+            }
+            list[i-step] = list[i];
+        }
+        assert(step == r->rcount - r->fcount);
+    }
 
     return ret;
 }

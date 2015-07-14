@@ -92,11 +92,11 @@ def get_popular_types(trace):
     print top_suffix
 
 # Are similar files with identical suffixes
-#def check_types(trace):
-def check_types(trace):
+def check_name_and_type(trace):
     bin_num = 0
     file_num = 0
     suffix_num = 0
+    name_num = 0
     while True:
         line = list(itertools.islice(trace, 1))
         if len(line) == 0:
@@ -108,6 +108,7 @@ def check_types(trace):
 
         iflines = list(itertools.islice(trace, fnum))
         sufs = [ifl.split()[-2] for ifl in iflines]
+        names = [ifl.split()[3] for ifl in iflines]
 
         suffixset = {}
         for suf in sufs:
@@ -116,12 +117,20 @@ def check_types(trace):
             else:
                 suffixset[suf] = 1
 
+        nameset = {}
+        for name in names:
+            if name in nameset:
+                nameset[name] += 1
+            else:
+                nameset[name] = 1
+
         suffix_num += len(suffixset)
+        name_num += len(nameset)
         if len(suffixset) > 1:
             print suffixset
 
-    print >>sys.stderr, "%10s %10s %10s" % ("Bins", "Files", "Suffix")
-    print >>sys.stderr, "%10d %10d %10d" % (bin_num, file_num, suffix_num)
+    print >>sys.stderr, "%10s %10s %10s %10s" % ("Bins", "Files", "Name", "Suffix")
+    print >>sys.stderr, "%10d %10d %10d %10d" % (bin_num, file_num, name_num, suffix_num)
 
 def get_popular_types(trace):
     suffixset = {}
@@ -173,6 +182,6 @@ if __name__ == "__main__":
         elif o in ["-p"]:
             get_popular_types(trace)
         elif o in ["-t"]:
-            check_types(trace)
+            check_name_and_type(trace)
 
     trace.close()

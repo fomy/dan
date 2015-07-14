@@ -4,7 +4,7 @@ import itertools
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "l:r:s:")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "l:r:s:")
 
     lb = 5
     rb = sys.maxint

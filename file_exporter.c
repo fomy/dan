@@ -58,7 +58,7 @@ void collect_distinct_files(){
     memset(&r, 0, sizeof(r));
 
     int count = 0;
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r, 1) == 0){
 
         if(r.rcount > 1 && r.fcount > 1){
             struct file_rec files[r.fcount];
@@ -243,6 +243,7 @@ int collect_identical_files(){
 #define FLAG_IDENTICAL_FILES 1
 #define FLAG_SIMILAR_FILES 2
 #define FLAG_DISTINCT_FILES 3
+#define FLAG_INTRA_FILES 4
 
 int main(int argc, char *argv[])
 {
@@ -276,6 +277,8 @@ int main(int argc, char *argv[])
         collect_similar_files();
     else if(flag == FLAG_DISTINCT_FILES)
         collect_distinct_files();
+    /*else if(flag == FLAG_INTRAT_FILES)*/
+        /*collect_distinct_files();*/
 
     close_database();
 

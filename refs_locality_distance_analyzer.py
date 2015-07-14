@@ -3,7 +3,7 @@ import getopt
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.getopt(sys.argv[1:], "l:r:")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "l:r:")
 
     lb = 5
     rb = sys.maxint
