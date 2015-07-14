@@ -91,6 +91,9 @@ def get_popular_types(trace):
     print "In size:"
     print top_suffix
 
+# Are similar files with identical suffixes
+#def check_types(trace):
+
 if __name__ == "__main__":
 
     (opts, args) = getopt.gnu_getopt(sys.argv[1:], "dcp")

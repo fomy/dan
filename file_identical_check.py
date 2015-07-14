@@ -119,7 +119,7 @@ def get_popular_types(trace):
 
 # find all identical files
 # -n check names
-# -s check suffix
+# -s check file size distribution 
 # -p output popular suffix
 if __name__ == "__main__":
 
