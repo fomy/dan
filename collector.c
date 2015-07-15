@@ -146,8 +146,11 @@ static int read_hashfile(char *hashfile_name)
             if (!ci) /* exit the loop if it was the last chunk */
                 break;
 
-            memcpy(chunk.hash, ci->hash, hashfile_hash_size(handle)/8);
-            chunk.hashlen = hashfile_hash_size(handle)/8;
+            int hashsize = hashfile_hash_size(handle)/8;
+            int chunksize = ci->size;
+            memcpy(chunk.hash, ci->hash, hashsize);
+            memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+            chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
             MD5_Update(&ctx, chunk.hash, chunk.hashlen);
 

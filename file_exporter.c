@@ -117,7 +117,7 @@ void collect_intra_redundant_files(){
         struct intra_redundant_file *irfile = value;
         printf("FILE %d %" PRId64 " %s %d %d ", irfile->fid, irfile->fsize, irfile->suffix,
                 irfile->cnum, irfile->csize);
-        print_hash(irfile->minhash, 6);
+        print_hash(irfile->minhash, 10);
     }
 
     fprintf(stderr, "%d intra-redundant files\n", g_hash_table_size(fileset));
@@ -147,7 +147,7 @@ void collect_distinct_files(){
                 if(memcmp(files[i].minhash, files[i-1].minhash, sizeof(files[i].minhash)) != 0){
                     char suffix[8];
                     printf("CHUK %d ", r.fcount);
-                    print_hash(r.hash, 6);
+                    print_hash(r.hash, 10);
                     int j = 0;
                     for(; j<r.fcount; j++){
                         parse_file_suffix(files[j].fname, suffix, sizeof(suffix));
@@ -158,7 +158,7 @@ void collect_distinct_files(){
                         }
                         printf("FILE %d %" PRId64 " %s %s ", files[j].fid, files[j].fsize,
                                 files[j].fname, suffix);
-                        print_hash(files[j].minhash, 6);
+                        print_hash(files[j].minhash, 10);
                     }
 
                     count++;
@@ -234,7 +234,7 @@ int collect_similar_files(){
         }
 
         printf("HASH %d ", g_list_length(fl->head));
-        print_hash(fl->hash, 6);
+        print_hash(fl->hash, 10);
         GList* elem = g_list_first(fl->head);
         do{
             struct file_item* item = elem->data;
@@ -246,7 +246,7 @@ int collect_similar_files(){
             }
             printf("FILE %d %" PRId64 " %s %s ", item->fid, item->fsize,
                     item->fname, suffix);
-            print_hash(item->hash, 6);
+            print_hash(item->hash, 10);
         }while((elem = g_list_next(elem)));
     }
 
@@ -295,7 +295,7 @@ int collect_identical_files(){
     while(g_hash_table_iter_next(&iter, &key, &value)){
         struct file_list* fl = value;
         printf("HASH %d ", g_list_length(fl->head));
-        print_hash(fl->hash, 6);
+        print_hash(fl->hash, 10);
         GList* elem = g_list_first(fl->head);
         do{
             struct file_item* item = elem->data;

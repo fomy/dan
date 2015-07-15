@@ -97,8 +97,6 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
     assert(total_references == intra_file + identical_file + min_similar_file
             + similar_file + same_suffix_file + distinct_file);
 
-    /*fprintf(stderr, "%8s %8s %8s %8s %8s\n", "Total", "Intra", "Ident", "Simi", "Dist");*/
-    /*fprintf(stdout, "%8d %8d %8d %8d %8d\n", total_references, intra_file, identical_file, similar_file, distinct_file);*/
     fprintf(stderr, "%8s %8s %8s %8s %8s %8s\n", "Intra", "Ident", "Min", "+Max", "Suffix", "Dist");
     fprintf(stdout, "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n", 1.0*intra_file/total_references, 1.0*identical_file/total_references, 
             1.0*min_similar_file/total_references, 1.0*similar_file/total_references, 

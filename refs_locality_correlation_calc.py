@@ -1,6 +1,6 @@
+#!/usr/bin/python
 import sys
 import getopt
-from mpmath import *
 
 def calcMeanAndDev(refs):
     sum = 0.
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     (opts, args) = getopt.gnu_getopt(sys.argv[1:], "bl:", ["binary", "lag"])
 
     binary = False
-    lag = 1
+    lag = 1000
     for o, a in opts:
         if o in ["-b"]:
             binary = True
