@@ -74,11 +74,14 @@ def check_each_pair(trace):
                     # a pair of similar/identical files; skip
                     continue
                 assert(int(file_i[1]) < int(file_j[1]))
+                # file id pair
                 key = (int(file_i[1]), int(file_j[1]))
                 if key not in pairset:
                     pairset[key] = 0
+                    # file name
                     if file_i[3] == file_j[3]:
                         same_name += 1
+                    # suffix
                     if file_i[4] == file_j[4]:
                         same_suffix += 1
                     else:
