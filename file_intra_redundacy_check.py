@@ -19,7 +19,7 @@ def get_file_size(trace):
     print >>sys.stderr, "mean = %.2f" % (1.0*mean/count)
 
 def get_popular_types(trace):
-    # {suffix : [num, size]}
+    # {suffix : [file num, file size, redundant chunk size]}
     suffixset = {}
     while True:
         line = list(itertools.islice(trace, 1))
@@ -31,8 +31,9 @@ def get_popular_types(trace):
         if file[3] in suffixset:
             suffixset[file[3]][0] += 1 
             suffixset[file[3]][1] += int(file[2])
+            suffixset[file[3]][2] += int(file[5])
         else:
-            suffixset[file[3]] = [1, int(file[2])]
+            suffixset[file[3]] = [1, int(file[2]), int(file[5])]
 
     top_suffix = []
     for suf in suffixset:
@@ -52,6 +53,19 @@ def get_popular_types(trace):
             top_suffix.pop()
 
     print "In size:"
+    print top_suffix
+
+    print "In number:"
+    print top_suffix
+
+    top_suffix = []
+    for suf in suffixset:
+        top_suffix.append((suffixset[suf][2], suf))
+        top_suffix = sorted(top_suffix, reverse=True)
+        if(len(top_suffix) > 10):
+            top_suffix.pop()
+
+    print "In redundant chunk size:"
     print top_suffix
 
 # find all identical files
