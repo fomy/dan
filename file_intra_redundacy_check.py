@@ -26,7 +26,6 @@ def get_popular_types(trace):
         if len(line) == 0:
             break;
 
-        print line
         file = line[0].split()
         if file[3] in suffixset:
             suffixset[file[3]][0] += 1 

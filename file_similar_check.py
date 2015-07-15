@@ -120,7 +120,9 @@ def check_each_similar_pair(sufs, names, hashes, sizes):
             f2size = int(sizes[j])
             mean = (f1size + f2size)/2.0
             dev = ((f1size - mean)*(f1size - mean) + (f2size - mean)*(f2size - mean))/2.0
-            coefficient += math.sqrt(dev)/mean
+            co = math.sqrt(dev)/mean
+            print "%.4f" % co
+            coefficient += co 
 
     return (same_name, same_suffix, pair_num, diff_pairs, coefficient)
 
@@ -193,7 +195,7 @@ def check_name_and_type(trace):
         if(len(top_diff) > 10):
             top_diff.pop()
 
-    print top_diff
+    print >>sys.stderr, top_diff
     coefficient /= total_pair_num
 
     print >>sys.stderr, "%10s %10s %10s %10s" % ("Bins", "Files", "Name", "Suffix")

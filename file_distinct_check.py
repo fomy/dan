@@ -98,7 +98,9 @@ def check_each_pair(trace):
                     f2size = int(file_j[2])
                     mean = (f1size + f2size)/2.0
                     dev = ((f1size - mean)*(f1size - mean) + (f2size - mean)*(f2size - mean))/2.0
-                    coefficient += math.sqrt(dev)/mean
+                    co = math.sqrt(dev)/mean
+                    print "%.4f" % co
+                    coefficient += co 
 
                 pairset[key] += 1
 
@@ -115,7 +117,7 @@ def check_each_pair(trace):
         if(len(top_diff) > 10):
             top_diff.pop()
 
-    print top_diff
+    print >>sys.stderr, top_diff
 
 
 # find all identical files
