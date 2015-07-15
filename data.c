@@ -69,6 +69,7 @@ void parse_file_suffix(char *path, char *suffix, int suffixlen){
     else{
         assert(path[i] == '.');
         strncpy(suffix, &path[i+1], suffixlen);
+        suffix[suffixlen-1] = 0;
     }
 }
 
