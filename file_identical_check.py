@@ -16,7 +16,7 @@ def get_file_refs_distribution(trace):
         print fnum
         total_files += 1
         total_refs += fnum
-    print >>sys.stderr, "%8.5f" % (1.0*total_refs/total_files)
+    print >>sys.stderr, "mean = %8.5f" % (1.0*total_refs/total_files)
 
 def get_file_size(trace):
     mean = 0;
@@ -34,20 +34,33 @@ def get_file_size(trace):
             count += 1
             print size 
 
-    print >>sys.stderr, "%.2f" % (1.0*mean/count)
+    print >>sys.stderr, "mean = %.2f" % (1.0*mean/count)
 
-def check_one_file(one, others):
-    for other in others:
-        if one == other:
-            return True
-
-    return False
+def check_each_identical_pair(sufs, names):
+    same_name = 0
+    same_suffix = 0
+    pair_num = 0
+    for i in range(len(sufs)):
+        for j in range(len(sufs)):
+            if i == j:
+                continue
+            pair_num += 1
+            if(sufs[i] == sufs[j]):
+                same_suffix += 1
+            if(names[i] == names[j]):
+                same_name += 1
+    return (same_name, same_suffix, pair_num)
 
 def check_name_and_type(trace):
     logical_files = 0
     physical_files = 0
     total_names = 0
     total_suffix = 0
+
+    total_same_name = 0
+    total_same_suffix = 0
+    total_pair_num = 0
+
     while True:
         line = list(itertools.islice(trace, 1))
         if len(line) == 0:
@@ -59,6 +72,11 @@ def check_name_and_type(trace):
 
         names = [ifl.split()[3] for ifl in iflines]
         sufs = [ifl.split()[-1] for ifl in iflines]
+
+        (same_name, same_suffix, pair_num) = check_each_identical_pair(sufs, names)
+        total_same_name += same_name
+        total_same_suffix += same_suffix
+        total_pair_num += pair_num
 
         nameset = {}
         for name in names:
@@ -79,6 +97,8 @@ def check_name_and_type(trace):
 
     print >>sys.stderr, "%10s %10s %10s %10s" % ("Logical", "Physical", "Names", "Suffix")
     print >>sys.stderr, "%10d %10d %10d %10d" % (logical_files, physical_files, total_names, total_suffix)
+    print >>sys.stderr, "Probability of same name and same type: %10f and  %10f in %d pairs" % (1.0*total_same_name/total_pair_num, 
+            1.0*total_same_suffix/total_pair_num, total_pair_num)
 
 def get_popular_types(trace):
     suffixset = {}
@@ -123,7 +143,7 @@ def get_popular_types(trace):
 # -p output popular suffix
 if __name__ == "__main__":
 
-    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "npsd")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "npsr")
 
     trace = open(args[0], "r")
     for o, a in opts:
@@ -133,7 +153,7 @@ if __name__ == "__main__":
             get_popular_types(trace)
         elif o in ["-s"]:
             get_file_size(trace)
-        elif o in ["-d"]:
+        elif o in ["-r"]:
             get_file_refs_distribution(trace)
 
     trace.close()

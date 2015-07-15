@@ -59,6 +59,7 @@ void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_
     g_hash_table_iter_init(&iter, files);
 
     struct file_rec file;
+    memset(&file, 0, sizeof(file));
     struct suffix_stat *s = NULL;
     char suffix[8];
     while(g_hash_table_iter_next(&iter, &key, &value)){

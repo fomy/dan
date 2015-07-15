@@ -91,12 +91,33 @@ def get_popular_types(trace):
     print "In size:"
     print top_suffix
 
+def check_each_similar_pair(sufs, names, hash):
+    same_name = 0
+    same_suffix = 0
+    pair_num = 0
+    for i in range(len(sufs)):
+        for j in range(len(sufs)):
+            if hash[i] == hash[j]:
+                continue
+            pair_num += 1
+            if(sufs[i] == sufs[j]):
+                same_suffix += 1
+            if(names[i] == names[j]):
+                same_name += 1
+    return (same_name, same_suffix, pair_num)
+
+
 # Are similar files with identical suffixes
 def check_name_and_type(trace):
     bin_num = 0
     file_num = 0
     suffix_num = 0
     name_num = 0
+
+    total_same_name = 0
+    total_same_suffix = 0
+    total_pair_num = 0
+
     while True:
         line = list(itertools.islice(trace, 1))
         if len(line) == 0:
@@ -109,6 +130,12 @@ def check_name_and_type(trace):
         iflines = list(itertools.islice(trace, fnum))
         sufs = [ifl.split()[-2] for ifl in iflines]
         names = [ifl.split()[3] for ifl in iflines]
+        hash = [ifl.split()[-1] for ifl in iflines]
+
+        (same_name, same_suffix, pair_num) = check_each_similar_pair(sufs, names, hash)
+        total_same_name += same_name
+        total_same_suffix += same_suffix
+        total_pair_num += pair_num
 
         suffixset = {}
         for suf in sufs:
@@ -131,6 +158,8 @@ def check_name_and_type(trace):
 
     print >>sys.stderr, "%10s %10s %10s %10s" % ("Bins", "Files", "Name", "Suffix")
     print >>sys.stderr, "%10d %10d %10d %10d" % (bin_num, file_num, name_num, suffix_num)
+    print >>sys.stderr, "Probability of same name and same type: %10f and  %10f in %d pairs" % (1.0*total_same_name/total_pair_num, 
+            1.0*total_same_suffix/total_pair_num, total_pair_num)
 
 def get_popular_types(trace):
     suffixset = {}
