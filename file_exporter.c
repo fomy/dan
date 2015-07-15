@@ -50,6 +50,81 @@ static void print_hash(const uint8_t *hash,
     printf("\n");
 }
 
+struct intra_redundant_file{
+    int64_t fsize;
+    char suffix[8];
+    int fid;
+    int cnum;
+    int csize;
+    char minhash[20];
+};
+
+/* intra-file redundancy */
+void collect_intra_redundant_files(){
+    int ret = init_iterator("CHUNK");
+
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+    struct file_rec f;
+    memset(&f, 0, sizeof(f));
+
+    int count = 0;
+    GHashTable *fileset = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, free);
+
+    while(iterate_chunk(&r, 0) == 0){
+
+        if(r.rcount > r.fcount){
+            int *flist = &r.list[r.lsize/2];
+            int i = 1;
+            for(; i<r.rcount; i++){
+                if(flist[i] == flist[i-1]){
+                    /* An intra-file redundancy */
+                    struct intra_redundant_file * irfile = g_hash_table_lookup(fileset, &flist[i]);
+                    if(irfile == NULL){
+                        f.fid = flist[i];
+                        ret = search_file(&f);
+                        assert(ret == 1);
+
+                        irfile = malloc(sizeof(struct intra_redundant_file));
+                        irfile->fid = f.fid;
+                        irfile->fsize = f.fsize;
+                        memcpy(irfile->minhash, f.minhash, sizeof(f.minhash));
+                        parse_file_suffix(f.fname, irfile->suffix, sizeof(irfile->suffix));
+                        if(strncmp(irfile->suffix, "edu,", 4) == 0){
+                            strcpy(irfile->suffix, "edu,?");
+                        }else if(strlen(irfile->suffix) == 0){
+                            strcpy(irfile->suffix, ".None");
+                        }
+                        irfile->cnum = 0;
+                        irfile->csize = 0;
+
+                        g_hash_table_insert(fileset, &irfile->fid, irfile);
+                    }
+
+                    irfile->cnum++;
+                    irfile->csize += r.csize;
+                }
+            }
+        }
+    }
+
+    close_iterator();
+
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, fileset);
+    while(g_hash_table_iter_next(&iter, &key, &value)){
+        struct intra_redundant_file *irfile = value;
+        printf("FILE %d %" PRId64 " %s %d %d ", irfile->fid, irfile->fsize, irfile->suffix,
+                irfile->cnum, irfile->csize);
+        print_hash(irfile->minhash, 6);
+    }
+
+    fprintf(stderr, "%d intra-redundant files\n", g_hash_table_size(fileset));
+
+    g_hash_table_destroy(fileset);
+
+}
 /* sharing some chunks but with different hash/minhash */
 void collect_distinct_files(){
     int ret = init_iterator("CHUNK");
@@ -243,13 +318,13 @@ int collect_identical_files(){
 #define FLAG_IDENTICAL_FILES 1
 #define FLAG_SIMILAR_FILES 2
 #define FLAG_DISTINCT_FILES 3
-#define FLAG_INTRA_FILES 4
+#define FLAG_INTRA_REDUNDANT_FILES 4
 
 int main(int argc, char *argv[])
 {
     int opt = 0;
     int flag = FLAG_IDENTICAL_FILES;
-    while ((opt = getopt_long(argc, argv, "isd", NULL, NULL))
+    while ((opt = getopt_long(argc, argv, "isdr", NULL, NULL))
             != -1) {
         switch (opt) {
             case 'i':
@@ -260,6 +335,9 @@ int main(int argc, char *argv[])
                 break;
             case 'd':
                 flag = FLAG_DISTINCT_FILES;
+                break;
+            case 'r':
+                flag = FLAG_INTRA_REDUNDANT_FILES;
                 break;
             default:
                 return -1;
@@ -277,8 +355,8 @@ int main(int argc, char *argv[])
         collect_similar_files();
     else if(flag == FLAG_DISTINCT_FILES)
         collect_distinct_files();
-    /*else if(flag == FLAG_INTRAT_FILES)*/
-        /*collect_distinct_files();*/
+    else if(flag == FLAG_INTRA_REDUNDANT_FILES)
+        collect_intra_redundant_files();
 
     close_database();
 
