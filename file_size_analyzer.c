@@ -5,6 +5,7 @@
 #include <glib.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <math.h>
 #include "store.h"
 
 int get_filesize_distribution(){
@@ -26,6 +27,60 @@ int get_filesize_distribution(){
     fprintf(stderr, "avg: %10.2f\n", 1.0*sum/count);
 
     close_iterator();
+
+    return 0;
+}
+
+int get_filesize_coefficient(unsigned int lb, unsigned int rb){
+    int ret = init_iterator("CHUNK");
+
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+
+    int chunk_count = 0;
+
+    double coefficient = 0;
+
+    struct file_rec file;
+    memset(&file, 0, sizeof(file));
+
+    fprintf(stderr, "Find the files\n");
+    while(iterate_chunk(&r ,1) == 0){
+        if(r.rcount >= lb && r.rcount <= rb && r.fcount > 1){
+            /* Get all files' IDs */
+            chunk_count++;
+            int i = 0;
+            int64_t filesizes[r.fcount];
+            for(; i<r.fcount; i++){
+                file.fid = r.list[r.lsize/2 + i];
+                if(search_file(&file) != 1){
+                    fprintf(stderr, "Cannot find the required file %d in file db\n", file.fid);
+                    exit(-1);
+                }
+                filesizes[i] = file.fsize;
+            }
+
+            double mean = 0;
+            for(i=0; i<r.fcount; i++){
+                mean += filesizes[i];
+            }
+            mean /= r.fcount;
+            double dev = 0;
+            for(i=0; i<r.fcount; i++){
+                dev += (filesizes[i] - mean)*(filesizes[i] - mean);
+            }
+            dev /= r.fcount;
+            dev = sqrt(dev);
+            double co = dev/mean;
+            printf("%.4f\n", co);
+            coefficient += co;
+        }
+    }
+
+    close_iterator();
+
+    coefficient /= chunk_count;
+    fprintf(stderr, "avg coefficient: %.4f\n", coefficient);
 
     return 0;
 }
@@ -91,7 +146,8 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     unsigned int lb = 1, rb =-1;
-	while ((opt = getopt_long(argc, argv, "l:r:", NULL, NULL))
+    int calc_coefficient = 0;
+	while ((opt = getopt_long(argc, argv, "l:r:c", NULL, NULL))
 			!= -1) {
 		switch (opt) {
             case 'l':
@@ -99,6 +155,9 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 rb = atoi(optarg);
+                break;
+            case 'c':
+                calc_coefficient = 1;
                 break;
             default:
                 return -1;
@@ -110,7 +169,9 @@ int main(int argc, char *argv[])
         return ret;
     }
 
-    if(lb == 1 && rb == -1)
+    if(calc_coefficient == 1)
+        get_filesize_coefficient(lb, rb);
+    else if(lb == 1 && rb == -1)
         get_filesize_distribution();
     else
         get_filesize_distribution_by_refs(lb, rb);

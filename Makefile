@@ -35,7 +35,7 @@ file_refs_source_analyzer:store file_refs_source_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) file_refs_source_analyzer.c store.o data.o -o file_refs_source_analyzer $(DBLIBS)
 
 file_size_analyzer:store file_size_analyzer.c
-	$(CC) $(CFLAGS) $(INCLUDE) file_size_analyzer.c store.o data.o -o file_size_analyzer -lglib $(DBLIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) file_size_analyzer.c store.o data.o -o file_size_analyzer -lglib $(DBLIBS) -lm
 
 file_type_analyzer:store file_type_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) file_type_analyzer.c store.o data.o -o file_type_analyzer -lglib $(DBLIBS)
