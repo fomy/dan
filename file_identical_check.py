@@ -101,6 +101,7 @@ def check_name_and_type(trace):
             1.0*total_same_suffix/total_pair_num, total_pair_num)
 
 def get_popular_types(trace):
+    # {suffix : [num, size]}
     suffixset = {}
     while True:
         line = list(itertools.islice(trace, 1))
