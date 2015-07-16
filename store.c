@@ -19,7 +19,7 @@ typedef struct {
 #define FILE_DB 4
 
 static redisContext *redis = NULL;
-static int current_db = CHUNK_DB;
+static int current_db = -1;
 static int CREATE = 0;
 
 void open_database(){
