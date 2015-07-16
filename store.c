@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <hiredis/hiredis.h>
-#include <string.h>
 
 #include "data.h"
 
@@ -415,7 +414,7 @@ void close_iterator(){
  * dedup_fid = 0: do not remove */
 int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
-    if(strcmp(scan_reply->element[0], "0") == 0 && remaining_replies ==  0){
+    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more chunk\n");
         return 1;
     }
@@ -474,7 +473,7 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 }
 
 int iterate_container(struct container_rec* r){
-    if(strcmp(scan_reply->element[0], "0") == 0 && remaining_replies ==  0){
+    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more container\n");
         return 1;
     }
@@ -519,7 +518,7 @@ int iterate_container(struct container_rec* r){
 
 int iterate_region(struct region_rec* r){
 
-    if(strcmp(scan_reply->element[0], "0") == 0 && remaining_replies ==  0){
+    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more region\n");
         return 1;
     }
@@ -564,7 +563,7 @@ int iterate_region(struct region_rec* r){
 
 int iterate_file(struct file_rec* r){
 
-    if(strcmp(scan_reply->element[0], "0") == 0 && remaining_replies ==  0){
+    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more file\n");
         return 1;
     }
