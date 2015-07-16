@@ -75,6 +75,8 @@ static int read_hashfile(char *hashfile_name)
     struct region_rec region;
     memset(&region, 0, sizeof(region));
     struct file_rec file;
+    int64_t syssize = 0;
+    int64_t dupsize = 0;
 
     /* statistics for generating IDs
      * ID starts from 0 */
@@ -148,6 +150,7 @@ static int read_hashfile(char *hashfile_name)
 
             int hashsize = hashfile_hash_size(handle)/8;
             int chunksize = ci->size;
+            syssize += ci->size;
             memcpy(chunk.hash, ci->hash, hashsize);
             memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
             chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
@@ -200,6 +203,7 @@ static int read_hashfile(char *hashfile_name)
                 /* A duplicate chunk */
                 /*printf("duplicate, %d\n", chunk.csize);*/
                 dup_count++;
+                dupsize += chunk.csize;
 
                 if(chunk.csize != ci->size){
                     print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
@@ -289,6 +293,7 @@ static int read_hashfile(char *hashfile_name)
 
     hashfile_close(handle);
 
+    printf("%" PRId64 " bytes in total, eliminating %" PRId64 " bytes, %.5f\n", syssize, dupsize, 1.0*dupsize/syssize);
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
     printf("%d files, excluding %d empty files\n", file_count, empty_files);
     return 0;
