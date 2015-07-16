@@ -423,9 +423,10 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
     if(remaining_replies == 0){
 
-        int scan_next = scan_reply->element[0];
+        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
         freeReplyObject(scan_reply);
-        scan_reply = redisCommand(redis, "SCAN %d", scan_next);
+        scan_reply = tmp;
+
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
         /* This is the length of scan_reply->element[1]->element[] */
@@ -481,9 +482,10 @@ int iterate_container(struct container_rec* r){
 
     if(remaining_replies == 0){
 
-        int scan_next = scan_reply->element[0];
+        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
         freeReplyObject(scan_reply);
-        scan_reply = redisCommand(redis, "SCAN %d", scan_next);
+        scan_reply = tmp;
+
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
         /* This is the length of scan_reply->element[1]->element[] */
@@ -525,9 +527,10 @@ int iterate_region(struct region_rec* r){
 
     if(remaining_replies == 0){
 
-        int scan_next = scan_reply->element[0];
+        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
         freeReplyObject(scan_reply);
-        scan_reply = redisCommand(redis, "SCAN %d", scan_next);
+        scan_reply = tmp;
+
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
         /* This is the length of scan_reply->element[1]->element[] */
@@ -569,9 +572,10 @@ int iterate_file(struct file_rec* r){
 
     if(remaining_replies == 0){
 
-        int scan_next = scan_reply->element[0];
+        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
         freeReplyObject(scan_reply);
-        scan_reply = redisCommand(redis, "SCAN %d", scan_next);
+        scan_reply = tmp;
+
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
         /* This is the length of scan_reply->element[1]->element[] */
