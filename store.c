@@ -39,6 +39,7 @@ void close_database(){
     if(CREATE == 1){
         redisReply *reply = redisCommand(redis, "SAVE");
         assert(reply->type == REDIS_REPLY_STATUS);
+        freeReplyObject(reply);
     }
     redisFree(redis);
 }
@@ -48,6 +49,7 @@ static inline void select_db(int db){
         redisReply *reply = redisCommand(redis, "SELECT %d", db);
         assert(reply->type == REDIS_REPLY_STATUS);
         current_db = db;
+        freeReplyObject(reply);
     }
 }
 
@@ -98,7 +100,8 @@ static void unserial_chunk_rec(KVOBJ* value, struct chunk_rec *r){
     if(r->list == NULL){
         r->lsize = r->rcount * 2 + 2;
         r->list = malloc(sizeof(int) * r->lsize);
-    }else if(r->lsize < r->rcount * 2 + 2 ){
+    }else if(r->lsize < r->rcount * 2 + 2 || 
+           r->lsize > (r->rcount + 1) * 4 ){
         r->lsize = r->rcount * 2 + 2;
         r->list = realloc(r->list, sizeof(int) * r->lsize);
     }
@@ -420,6 +423,7 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
     if(remaining_replies == 0){
 
+        freeReplyObject(scan_reply);
         scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
@@ -474,6 +478,7 @@ int iterate_container(struct container_rec* r){
 
     if(remaining_replies == 0){
 
+        freeReplyObject(scan_reply);
         scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
@@ -514,6 +519,7 @@ int iterate_region(struct region_rec* r){
 
     if(remaining_replies == 0){
 
+        freeReplyObject(scan_reply);
         scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 
@@ -554,6 +560,7 @@ int iterate_file(struct file_rec* r){
 
     if(remaining_replies == 0){
 
+        freeReplyObject(scan_reply);
         scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
         assert(scan_reply->type == REDIS_REPLY_ARRAY);
 

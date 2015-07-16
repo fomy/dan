@@ -284,6 +284,7 @@ static int read_hashfile(char *hashfile_name)
             empty_files++;
         }
         free(file.fname);
+        file.fname = NULL;
     }
 
     hashfile_close(handle);
