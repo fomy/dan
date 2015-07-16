@@ -175,18 +175,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    open_database();
 
-    char *buf = malloc(strlen(argv[optind]) + 1);
-    strcpy(buf, argv[optind]);
-    char *env_name = get_env_name(buf);
-
-    int ret = open_database(env_name);
-    free(buf);
-    if(ret != 0){
-        return ret;
-    }
-
-    ret = export_locality(argv[optind], locality);
+    int ret = export_locality(argv[optind], locality);
 
     close_database();
 

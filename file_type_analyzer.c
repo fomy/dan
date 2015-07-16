@@ -30,7 +30,7 @@ static gint suffix_size_cmp(struct suffix_stat* a, struct suffix_stat* b, gpoint
 }
 
 void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_size, unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -97,7 +97,7 @@ void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_
 }
 
 void get_all_filetypes(GHashTable *typeset, int64_t *fs_count, int64_t *fs_size){
-    int ret = init_iterator("FILE");
+    init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
@@ -189,10 +189,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     /* File system */
     int64_t fs_count = 0;
@@ -211,5 +208,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

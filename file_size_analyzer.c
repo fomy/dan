@@ -9,7 +9,7 @@
 #include "store.h"
 
 int get_filesize_distribution(){
-    int ret = init_iterator("FILE");
+    init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
@@ -32,7 +32,7 @@ int get_filesize_distribution(){
 }
 
 int get_filesize_coefficient(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -86,7 +86,7 @@ int get_filesize_coefficient(unsigned int lb, unsigned int rb){
 }
 
 int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -164,10 +164,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     if(calc_coefficient == 1)
         get_filesize_coefficient(lb, rb);
@@ -178,5 +175,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

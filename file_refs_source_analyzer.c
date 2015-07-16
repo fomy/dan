@@ -6,7 +6,7 @@
 #include "store.h"
 
 void get_file2ref_ratio(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -29,7 +29,7 @@ void get_file2ref_ratio(unsigned int lb, unsigned int rb){
 }
 
 void analyze_references_source(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -128,10 +128,7 @@ int main(int argc, char *argv[])
 
     /* makes no sense to analyze reference number 1 */
     assert(lb > 1);
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     if(task == 1)
         get_file2ref_ratio(lb, rb);
@@ -140,5 +137,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

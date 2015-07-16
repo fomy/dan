@@ -5,8 +5,8 @@
 #include <assert.h>
 #include "store.h"
 
-int get_reference_per_chunk(){
-    int ret = init_iterator("CHUNK");
+void get_reference_per_chunk(){
+    init_iterator("CHUNK");
 
     int max = 1;
     int count = 0;
@@ -34,11 +34,10 @@ int get_reference_per_chunk(){
 
     close_iterator();
 
-    return 0;
 }
 
-int get_logical_size_per_container(){
-    int ret = init_iterator("CONTAINER");
+void get_logical_size_per_container(){
+    init_iterator("CONTAINER");
 
     float max = 1;
     int count = 0;
@@ -69,11 +68,10 @@ int get_logical_size_per_container(){
         fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);
     }
 
-    return 0;
 }
 
-int get_logical_size_per_region(){
-    int ret = init_iterator("REGION");
+void get_logical_size_per_region(){
+    init_iterator("REGION");
 
     float max = 1;
     int count = 0;
@@ -104,7 +102,6 @@ int get_logical_size_per_region(){
         fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);
     }
 
-    return 0;
 }
 
 const char * const short_options = "u:";
@@ -129,17 +126,14 @@ int main(int argc, char *argv[])
     }
 
     assert(optind < argc);
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     if(unit == NULL || strcasecmp(unit, "CHUNK") == 0){
-        ret = get_reference_per_chunk();
+        get_reference_per_chunk();
     }else if(strcasecmp(unit, "REGION") == 0){
-        ret = get_logical_size_per_region();
+        get_logical_size_per_region();
     }else if(strcasecmp(unit, "CONTAINER") == 0){
-        ret = get_logical_size_per_container();
+        get_logical_size_per_container();
     }else{
         fprintf(stderr, "invalid unit");
         return -1;
@@ -147,5 +141,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

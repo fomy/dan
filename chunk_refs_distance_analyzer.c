@@ -6,7 +6,7 @@
 #include "store.h"
 
 int distance_between_all_chunk_references(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     int64_t sum = 0;
     int count = 0;
@@ -38,7 +38,7 @@ int distance_between_all_chunk_references(unsigned int lb, unsigned int rb){
 }
 
 int distance_between_first_two_chunk_references(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -87,10 +87,7 @@ int main(int argc, char *argv[])
     }
 
     assert(lb >= 2);
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     if(all == 1)
         distance_between_all_chunk_references(lb, rb);
@@ -99,5 +96,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

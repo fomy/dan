@@ -2,133 +2,56 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <db.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <hiredis/hiredis.h>
 
 #include "data.h"
 
-static DB* dbp;
+typedef struct {
+    void* data;
+    size_t size;
+} KVOBJ;
 
-struct {
-    DB_ENV *env;
-    DB* chunk_dbp;
-    DB* container_dbp;
-    DB* region_dbp;
-    DB* file_dbp;
-    DBC* cursorp;
-} ddb;
+#define CHUNK_DB 1
+#define REGION_DB 2
+#define CONTAINER_DB 3
+#define FILE_DB 4
 
-static int init_ddb(){
-    ddb.cursorp = NULL;
-    /* create and open env */
-    int ret = db_env_create(&ddb.env, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create ENV: %s\n", db_strerror(ret));
-        return ret;
+static redisContext *redis = NULL;
+static int current_db = CHUNK_DB;
+static int CREATE = 0;
+
+void open_database(){
+    redis = redisConnect("127.0.0.1", 6379);
+    if(redis != NULL && redis->err){
+        fprintf(stderr, "Error: %s\n", redis->errstr);
+        exit(-1);
     }
-
-    /* 2GB cache */
-    ret = ddb.env->set_cachesize(ddb.env, 4, 0, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot set cache for ENV: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    /* create db */
-    ret = db_create(&ddb.chunk_dbp, ddb.env, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create chunk DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = db_create(&ddb.container_dbp, ddb.env, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create container DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = db_create(&ddb.region_dbp, ddb.env, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create region DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = db_create(&ddb.file_dbp, ddb.env, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create file DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-    return 0;
 }
 
-static int open_ddb(char* env_name, int flags){
-    int ret = ddb.env->open(ddb.env, env_name, flags|DB_INIT_MPOOL, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open ENV: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    /* open db */ 
-    ret = ddb.chunk_dbp->open(ddb.chunk_dbp, NULL, "chunk.db", NULL, DB_HASH, flags, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open chunk DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = ddb.container_dbp->open(ddb.container_dbp, NULL, "container.db", NULL, DB_HASH, flags, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open container DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = ddb.region_dbp->open(ddb.region_dbp, NULL, "region.db", NULL, DB_HASH, flags, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open region DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-
-    ret = ddb.file_dbp->open(ddb.file_dbp, NULL, "file.db", NULL, DB_HASH, flags, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot open file DB: %s\n", db_strerror(ret));
-        return ret;
-    }
-    return 0;
-}
-
-int open_database(char* env_name){
-
-    int ret = init_ddb();
-
-    ret = open_ddb(env_name, 0);
-
-    return ret;
-}
-
-int create_database(char *env_name){
-
-    int ret = init_ddb();
-
-    ret = mkdir(env_name, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-    if(ret != 0){
-        fprintf(stderr, "Cannot create ENV directory: %s\n", strerror(errno));
-        /*return ret;*/
-    }
-
-    ret = open_ddb(env_name, DB_CREATE);
-    return ret;
+void create_database(){
+    CREATE = 1;
+    open_database();
 }
 
 void close_database(){
-    ddb.chunk_dbp->close(ddb.chunk_dbp, 0);
-    ddb.container_dbp->close(ddb.container_dbp, 0);
-    ddb.region_dbp->close(ddb.region_dbp, 0);
-    ddb.file_dbp->close(ddb.file_dbp, 0);
-
-    ddb.env->close(ddb.env, 0);
+    if(CREATE == 1){
+        redisReply *reply = redisCommand(redis, "SAVE");
+        assert(reply->type == REDIS_REPLY_STATUS);
+    }
+    redisFree(redis);
 }
 
-static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
+static inline void select_db(int db){
+    if(current_db != db){
+        redisReply *reply = redisCommand(redis, "SELECT %d", db);
+        assert(reply->type == REDIS_REPLY_STATUS);
+        current_db = db;
+    }
+}
+
+static void serial_chunk_rec(struct chunk_rec* r, KVOBJ* value){
     
     value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
         sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->fcount) +  2 * r->rcount * sizeof(int);
@@ -157,7 +80,7 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value){
     assert(off == value->size);
 }
 
-static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
+static void unserial_chunk_rec(KVOBJ* value, struct chunk_rec *r){
 
     int len = 0;
     memcpy(&r->rcount, value->data, sizeof(r->rcount));
@@ -194,175 +117,151 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r){
  * return 1 indicates existence; 0 indicates not exist.
  * */
 int search_chunk(struct chunk_rec *crec){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+
+    KVOBJ key, value;
 
     key.data = crec->hash;
     key.size = crec->hashlen;
-    /* Berkeley DB will not write into the DBT. See API reference.
-     * I am not sure whether DB will write to key by default. */
-    key.flags = DB_DBT_READONLY;
 
     value.data = NULL;
     value.size = 0;
-    /* Berkeley DB will allocate memory for the returned item.
-     * We should free it by ourselves */
-    value.flags = DB_DBT_MALLOC;
 
-    int ret = ddb.chunk_dbp->get(ddb.chunk_dbp, NULL, &key, &value, 0);
-    if(ret == 0){
-        /* success */
-        unserial_chunk_rec(&value, crec);
-        /*fprintf(stdout, "exist\n");*/
-        ret = 1;
-    }else if(ret == DB_NOTFOUND){
-        assert(value.data == NULL);
-        reset_chunk_rec(crec);
-        /*fprintf(stdout, "Not exist\n");*/
-        ret = 0;
-    }else{
-        fprintf(stderr, "Cannot get value: %s\n", db_strerror(ret));
-        ret = -1;
+    select_db(CHUNK_DB);
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to GET chunk\n");
+        exit(-1);
     }
 
-    free(value.data);
+    int ret = 0;
+    if(reply->type == REDIS_REPLY_NIL){
+        reset_chunk_rec(crec);
+        ret = 0;
+    }else{
+        assert(reply->type == REDIS_REPLY_STRING);
+        value.data = reply->str;
+        value.size = reply->len;
+        unserial_chunk_rec(&value, crec);
+        ret = 1;
+    }
+
+    freeReplyObject(reply);
 
     return ret;
 }
 
-int update_chunk(struct chunk_rec *crec){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+void update_chunk(struct chunk_rec *crec){
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
 
     key.data = crec->hash;
     key.size = crec->hashlen;
 
     serial_chunk_rec(crec, &value);
-    int ret = ddb.chunk_dbp->put(ddb.chunk_dbp, NULL, &key, &value, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot put value: %s\n", db_strerror(ret));
+
+    select_db(CHUNK_DB);
+
+    redisReply *reply = redisCommand(redis, "SET %b %b", key.data, key.size, value.data, value.size);
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to SET chunk\n");
+        exit(-1);
     }
+
+    assert(reply->type == REDIS_REPLY_STATUS);
+
     free(value.data);
-    return ret;
+    freeReplyObject(reply);
 }
 
 int search_container(struct container_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
 
-    key.data = &r->cid;
-    key.size = sizeof(r->cid);
-    key.flags = DB_DBT_READONLY;
+    int ret = 0;
 
-    value.data = NULL;
-    value.size = 0;
-    value.flags = DB_DBT_MALLOC;
+    select_db(CONTAINER_DB);
 
-    int ret = ddb.container_dbp->get(ddb.container_dbp, NULL, &key, &value, 0);
-    if(ret == 0){
-        /* success */
+    redisReply *reply = redisCommand(redis, "GET %b", &r->cid, sizeof(r->cid));
 
-        struct container_rec *v = value.data;
-        r->lsize = v->lsize;
-        r->psize = v->psize;
-        assert(r->cid == v->cid);
-
-        /*fprintf(stdout, "exist\n");*/
-        ret = 1;
-    }else if(ret == DB_NOTFOUND){
-        assert(value.data == NULL);
-        /*fprintf(stdout, "Not exist\n");*/
-        ret = 0;
-    }else{
-        fprintf(stderr, "Cannot get container: %s\n", db_strerror(ret));
-        ret = -1;
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to GET\n");
+        exit(-1);
     }
 
-    free(value.data);
+    if(reply->type == REDIS_REPLY_NIL){
+        ret = 0;
+    }else{
+        assert(reply->type == REDIS_REPLY_STRING);
+        memcpy(r, reply->str, reply->len);
+        ret = 1;
+    }
+
+    freeReplyObject(reply);
 
     return ret;
 }
 
-int update_container(struct container_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+void update_container(struct container_rec* r){
 
-    key.data = &r->cid;
-    key.size = sizeof(r->cid);
+    select_db(CONTAINER_DB);
 
-    value.data = r;
-    value.size = sizeof(*r);
+    redisReply *reply = redisCommand(redis, "SET %b %b", &r->cid, sizeof(r->cid), r, sizeof(*r));
 
-    int ret = ddb.container_dbp->put(ddb.container_dbp, NULL, &key, &value, 0);
-
-    if(ret != 0){
-        fprintf(stderr, "Cannot put container: %s\n", db_strerror(ret));
+    if(reply == NULL){
+        fprintf(stderr, "Cannot put container \n");
+        exit(-1);
     }
-    return ret;
+    
+    assert(reply->type == REDIS_REPLY_STATUS);
+
+    freeReplyObject(reply);
 }
 
 int search_region(struct region_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
 
-    key.data = &r->rid;
-    key.size = sizeof(r->rid);
-    key.flags = DB_DBT_READONLY;
+    int ret = 0;
 
-    value.data = NULL;
-    value.size = 0;
-    value.flags = DB_DBT_MALLOC;
+    select_db(REGION_DB);
 
-    int ret = ddb.region_dbp->get(ddb.region_dbp, NULL, &key, &value, 0);
-    if(ret == 0){
-        /* success */
-        struct region_rec *v = value.data;
-        r->lsize = v->lsize;
-        r->psize = v->psize;
-        assert(r->rid == v->rid);
+    redisReply *reply = redisCommand(redis, "GET %b", &r->rid, sizeof(r->rid));
 
-        /*fprintf(stdout, "exist\n");*/
-        ret = 1;
-    }else if(ret == DB_NOTFOUND){
-        assert(value.data == NULL);
-        /*fprintf(stdout, "Not exist\n");*/
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to GET\n");
+        exit(-1);
+    }
+
+    if(reply->type == REDIS_REPLY_NIL){
         ret = 0;
     }else{
-        fprintf(stderr, "Cannot get region: %s\n", db_strerror(ret));
-        ret = -1;
+        assert(reply->type == REDIS_REPLY_STRING);
+        memcpy(r, reply->str, reply->len);
+        ret = 1;
     }
 
-    free(value.data);
+    freeReplyObject(reply);
 
     return ret;
 }
 
-int update_region(struct region_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+void update_region(struct region_rec* r){
 
-    key.data = &r->rid;
-    key.size = sizeof(r->rid);
+    select_db(REGION_DB);
 
-    value.data = r;
-    value.size = sizeof(*r);
+    redisReply *reply = redisCommand(redis, "SET %b %b", &r->rid, sizeof(r->rid), r, sizeof(*r));
 
-    int ret = ddb.region_dbp->put(ddb.region_dbp, NULL, &key, &value, 0);
-
-    if(ret != 0){
-        fprintf(stderr, "Cannot put region: %s\n", db_strerror(ret));
+    if(reply == NULL){
+        fprintf(stderr, "Cannot put region\n" );
+        exit(-1);
     }
 
-    return ret;
+    assert(reply->type == REDIS_REPLY_STATUS);
+
+    freeReplyObject(reply);
 }
 
-static void serial_file_rec(struct file_rec* r, DBT* value){
+static void serial_file_rec(struct file_rec* r, KVOBJ* value){
     
     value->size = sizeof(r->fid) + sizeof(r->cnum) + sizeof(r->fsize) +
         sizeof(r->hash) + sizeof(r->minhash) + sizeof(r->maxhash) + strlen(r->fname);
@@ -386,7 +285,7 @@ static void serial_file_rec(struct file_rec* r, DBT* value){
     memcpy(value->data + off, r->fname, strlen(r->fname));
 }
 
-static void unserial_file_rec(DBT *value, struct file_rec *r){
+static void unserial_file_rec(KVOBJ *value, struct file_rec *r){
 
     int len = 0;
     memcpy(&r->fid, value->data, sizeof(r->fid));
@@ -411,90 +310,135 @@ static void unserial_file_rec(DBT *value, struct file_rec *r){
     r->fname[value->size - len] = 0;
 
 }
+
 int search_file(struct file_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
 
     key.data = &r->fid;
     key.size = sizeof(r->fid);
-    key.flags = DB_DBT_READONLY;
 
     value.data = NULL;
     value.size = 0;
-    value.flags = DB_DBT_MALLOC;
 
-    int ret = ddb.file_dbp->get(ddb.file_dbp, NULL, &key, &value, 0);
-    if(ret == 0){
-        /* success */
-        unserial_file_rec(&value, r);
-        ret = 1;
-    }else if(ret == DB_NOTFOUND){
-        assert(value.data == NULL);
-        /*fprintf(stdout, "Not exist\n");*/
-        ret = 0;
-    }else{
-        fprintf(stderr, "Cannot get file: %s\n", db_strerror(ret));
-        ret = -1;
+    select_db(FILE_DB);
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to GET\n");
+        exit(-1);
     }
 
-    free(value.data);
+    int ret = 0;
+    if(reply->type == REDIS_REPLY_NIL){
+        ret = 0;
+    }else{
+        assert(reply->type == REDIS_REPLY_STRING);
+        value.data = reply->str;
+        value.size = reply->len;
+        unserial_file_rec(&value, r);
+        ret = 1;
+    }
+
+    freeReplyObject(reply);
 
     return ret;
 }
 
-int update_file(struct file_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
+void update_file(struct file_rec* r){
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
 
     key.data = &r->fid;
     key.size = sizeof(r->fid);
 
     serial_file_rec(r, &value);
 
-    int ret = ddb.file_dbp->put(ddb.file_dbp, NULL, &key, &value, 0);
-    if(ret != 0){
-        fprintf(stderr, "Cannot put file: %s\n", db_strerror(ret));
+    select_db(FILE_DB);
+
+    redisReply *reply = redisCommand(redis, "SET %b %b", key.data, key.size, value.data, value.size);
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to SET\n");
+        exit(-1);
     }
+
+    assert(reply->type == REDIS_REPLY_STATUS);
 
     free(value.data);
-    return ret;
+    freeReplyObject(reply);
+
 }
 
-int init_iterator(char *type){
-    int ret;
+static int ITERATOR_DB = CHUNK_DB;
+static redisReply *scan_reply = NULL;
+static int remaining_replies = 0;
+
+void init_iterator(char *type){
     if(strcmp(type, "CHUNK") == 0){
-        ret = ddb.chunk_dbp->cursor(ddb.chunk_dbp, NULL, &ddb.cursorp, 0);
+        ITERATOR_DB = CHUNK_DB;
     }else if(strcmp(type, "CONTAINER") == 0){
-        ret = ddb.container_dbp->cursor(ddb.container_dbp, NULL, &ddb.cursorp, 0);
+        ITERATOR_DB = CONTAINER_DB;
     }else if(strcmp(type, "REGION") == 0){
-        ret = ddb.region_dbp->cursor(ddb.region_dbp, NULL, &ddb.cursorp, 0);
+        ITERATOR_DB = REGION_DB;
     }else if(strcmp(type, "FILE") == 0){
-        ret = ddb.file_dbp->cursor(ddb.file_dbp, NULL, &ddb.cursorp, 0);
+        ITERATOR_DB = FILE_DB;
     }else{
-        ret = -1;
         fprintf(stderr, "invalid iterator type!\n");
+        exit(-1);
     }
-    return ret;
+
+    select_db(ITERATOR_DB);
+
+    scan_reply = redisCommand(redis, "SCAN 0");
+    assert(scan_reply->type == REDIS_REPLY_ARRAY);
+
+    /* This is the length of scan_reply->element[1]->element[] */
+    remaining_replies = scan_reply->element[1]->elements;
+
 }
 
 void close_iterator(){
-    ddb.cursorp->close(ddb.cursorp);
+    freeReplyObject(scan_reply);
 }
 
+/* return 1: no more data
+ * return 0: more data */
 /* dedup_fid = 1: remove duplicate file id in file list
  * dedup_fid = 0: do not remove */
 int iterate_chunk(struct chunk_rec* r, int dedup_fid){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
 
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
-    if(ret != 0){
+    if(scan_reply->element[0] == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more chunk\n");
-        return ret;
+        return 1;
     }
+
+    select_db(ITERATOR_DB);
+
+    if(remaining_replies == 0){
+
+        scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
+        assert(scan_reply->type == REDIS_REPLY_ARRAY);
+
+        /* This is the length of scan_reply->element[1]->element[] */
+        remaining_replies = scan_reply->element[1]->elements;
+    }
+
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
+
+    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+    assert(reply->type == REDIS_REPLY_STRING);
+
+    value.data = reply->str;
+    value.size = reply->len;
 
     memcpy(r->hash, key.data, key.size);
     r->hashlen = key.size;
@@ -515,59 +459,123 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
         assert(step == r->rcount - r->fcount);
     }
 
-    return ret;
+    freeReplyObject(reply);
+
+    return 0;
 }
 
 int iterate_container(struct container_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
-
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
-    if(ret != 0){
+    if(scan_reply->element[0] == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more container\n");
-        return ret;
+        return 1;
     }
+
+    select_db(ITERATOR_DB);
+
+    if(remaining_replies == 0){
+
+        scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
+        assert(scan_reply->type == REDIS_REPLY_ARRAY);
+
+        /* This is the length of scan_reply->element[1]->element[] */
+        remaining_replies = scan_reply->element[1]->elements;
+    }
+
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
+
+    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+    assert(reply->type == REDIS_REPLY_STRING);
+
+    value.data = reply->str;
+    value.size = reply->len;
 
     struct container_rec* v = value.data;
     r->cid = v->cid;
     r->psize = v->psize;
     r->lsize = v->lsize;
 
-    return ret;
+    freeReplyObject(reply);
+    return 0;
 }
 
 int iterate_region(struct region_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
 
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
-    if(ret != 0){
+    if(scan_reply->element[0] == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more region\n");
-        return ret;
+        return 1;
     }
+
+    select_db(ITERATOR_DB);
+
+    if(remaining_replies == 0){
+
+        scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
+        assert(scan_reply->type == REDIS_REPLY_ARRAY);
+
+        /* This is the length of scan_reply->element[1]->element[] */
+        remaining_replies = scan_reply->element[1]->elements;
+    }
+
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
+
+    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+    assert(reply->type == REDIS_REPLY_STRING);
+
+    value.data = reply->str;
+    value.size = reply->len;
 
     struct region_rec *v = value.data;
     r->rid = v->rid;
     r->psize = v->psize;
     r->lsize = v->lsize;
 
-    return ret;
+    freeReplyObject(reply);
+    return 0;
 }
 
 int iterate_file(struct file_rec* r){
-    DBT key, value;
-    memset(&key, 0, sizeof(DBT));
-    memset(&value, 0, sizeof(DBT));
 
-    int ret = ddb.cursorp->get(ddb.cursorp, &key, &value, DB_NEXT);
-    if(ret != 0){
+    if(scan_reply->element[0] == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more file\n");
-        return ret;
+        return 1;
     }
+
+    select_db(ITERATOR_DB);
+
+    if(remaining_replies == 0){
+
+        scan_reply = redisCommand(redis, "SCAN %d", scan_reply->element[0]);
+        assert(scan_reply->type == REDIS_REPLY_ARRAY);
+
+        /* This is the length of scan_reply->element[1]->element[] */
+        remaining_replies = scan_reply->element[1]->elements;
+    }
+
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
+
+    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+
+    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+    assert(reply->type == REDIS_REPLY_STRING);
+
+    value.data = reply->str;
+    value.size = reply->len;
 
     unserial_file_rec(&value, r);
 
-    return ret;
+    freeReplyObject(reply);
+    return 0;
 }

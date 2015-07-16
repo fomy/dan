@@ -3,23 +3,23 @@
 
 #include "data.h"
 
-void create_database();
-void open_database();
+int create_database(char *hashfile_name);
+int open_database(char *hashfile_name);
 void close_database();
 
 int search_chunk(struct chunk_rec *crec);
-void update_chunk(struct chunk_rec *crec);
+int update_chunk(struct chunk_rec *crec);
 
 int search_container(struct container_rec *r);
-void update_container(struct container_rec* r);
+int update_container(struct container_rec* r);
 
 int search_region(struct region_rec* r);
-void update_region(struct region_rec* r);
+int update_region(struct region_rec* r);
 
 int search_file(struct file_rec* r);
-void update_file(struct file_rec* r);
+int update_file(struct file_rec* r);
 
-void init_iterator(char *type);
+int init_iterator(char *type);
 void close_iterator();
 int iterate_chunk(struct chunk_rec* r, int dedup_fid);
 int iterate_container(struct container_rec* r);

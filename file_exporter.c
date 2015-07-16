@@ -61,7 +61,7 @@ struct intra_redundant_file{
 
 /* intra-file redundancy */
 void collect_intra_redundant_files(){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -82,7 +82,7 @@ void collect_intra_redundant_files(){
                     struct intra_redundant_file * irfile = g_hash_table_lookup(fileset, &flist[i]);
                     if(irfile == NULL){
                         f.fid = flist[i];
-                        ret = search_file(&f);
+                        int ret = search_file(&f);
                         assert(ret == 1);
 
                         irfile = malloc(sizeof(struct intra_redundant_file));
@@ -127,7 +127,7 @@ void collect_intra_redundant_files(){
 }
 /* sharing some chunks but with different hash/minhash */
 void collect_distinct_files(){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -185,9 +185,7 @@ static int all_files_are_identical(struct file_list* fl){
 }
 
 int collect_similar_files(){
-    int ret = init_iterator("FILE");
-    if(ret != 0)
-        return ret;
+    init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
@@ -257,9 +255,7 @@ int collect_similar_files(){
 }
 
 int collect_identical_files(){
-    int ret = init_iterator("FILE");
-    if(ret != 0)
-        return ret;
+    init_iterator("FILE");
 
     struct file_rec r;
     memset(&r, 0, sizeof(r));
@@ -344,10 +340,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     if(flag == FLAG_IDENTICAL_FILES)
         collect_identical_files();
@@ -360,5 +353,5 @@ int main(int argc, char *argv[])
 
     close_database();
 
-    return ret;
+    return 0;
 }

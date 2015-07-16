@@ -265,7 +265,7 @@ static int read_hashfile(char *hashfile_name)
             chunk.list[chunk.lsize/2 + chunk.rcount] = file_count;
             chunk.rcount++;
 
-            ret = update_chunk(&chunk);
+            update_chunk(&chunk);
 
             /* update file info */
             file.cnum++;
@@ -313,17 +313,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    char *buf = malloc(strlen(argv[1]) + 1);
-    strcpy(buf, argv[1]);
-    char *env_name = get_env_name(buf);
 
-    int ret = create_database(env_name);
-    free(buf);
-    if(ret != 0){
-        return ret;
-    }
+    create_database();
 
-    ret = read_hashfile(argv[1]);
+    int ret = read_hashfile(argv[1]);
 
     close_database();
 

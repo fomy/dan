@@ -5,7 +5,7 @@
 #include "store.h"
 
 int get_chunksize_distribution(unsigned int lb, unsigned int rb){
-    int ret = init_iterator("CHUNK");
+    init_iterator("CHUNK");
 
     float sum = 0;
     int count = 0;
@@ -46,14 +46,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    int ret = open_database(argv[optind]);
-    if(ret != 0){
-        return ret;
-    }
+    open_database();
 
     get_chunksize_distribution(lb, rb);
 
     close_database();
 
-    return ret;
+    return 0;
 }

@@ -1,7 +1,9 @@
-DB_HOME = /usr/local/BerkeleyDB.6.1
+#DB_HOME = /usr/local/BerkeleyDB.6.1
 
-INCLUDE = -I ${DB_HOME}/include
-DBLIBS = -L ${DB_HOME}/lib -ldb
+#INCLUDE = -I ${DB_HOME}/include
+#DBLIBS = -L ${DB_HOME}/lib -ldb
+
+DBLIBS = -lhiredis
 
 CFLAGS = -O2 -g
 CC = gcc
