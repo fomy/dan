@@ -125,7 +125,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    assert(optind < argc);
     open_database();
 
     if(unit == NULL || strcasecmp(unit, "CHUNK") == 0){
