@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <hiredis/hiredis.h>
+#include <string.h>
 
 #include "data.h"
 
