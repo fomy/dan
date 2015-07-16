@@ -437,8 +437,8 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
 
-    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+    key.data = scan_reply->element[1]->element[remaining_replies]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies]->len;
 
     redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
     assert(reply->type == REDIS_REPLY_STRING);
@@ -494,8 +494,8 @@ int iterate_container(struct container_rec* r){
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
 
-    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+    key.data = scan_reply->element[1]->element[remaining_replies]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies]->len;
 
     redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
     assert(reply->type == REDIS_REPLY_STRING);
@@ -537,8 +537,8 @@ int iterate_region(struct region_rec* r){
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
 
-    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+    key.data = scan_reply->element[1]->element[remaining_replies]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies]->len;
 
     redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
     assert(reply->type == REDIS_REPLY_STRING);
@@ -580,8 +580,8 @@ int iterate_file(struct file_rec* r){
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
 
-    key.data = scan_reply->element[1]->element[remaining_replies-1]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies-1]->len;
+    key.data = scan_reply->element[1]->element[remaining_replies]->str;
+    key.size = scan_reply->element[1]->element[remaining_replies]->len;
 
     redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
     assert(reply->type == REDIS_REPLY_STRING);
