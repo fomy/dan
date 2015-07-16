@@ -431,6 +431,8 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
         remaining_replies = scan_reply->element[1]->elements;
     }
 
+    remaining_replies--;
+
     KVOBJ key, value;
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
@@ -486,6 +488,8 @@ int iterate_container(struct container_rec* r){
         remaining_replies = scan_reply->element[1]->elements;
     }
 
+    remaining_replies--;
+
     KVOBJ key, value;
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
@@ -527,6 +531,8 @@ int iterate_region(struct region_rec* r){
         remaining_replies = scan_reply->element[1]->elements;
     }
 
+    remaining_replies--;
+
     KVOBJ key, value;
     memset(&key, 0, sizeof(KVOBJ));
     memset(&value, 0, sizeof(KVOBJ));
@@ -567,6 +573,8 @@ int iterate_file(struct file_rec* r){
         /* This is the length of scan_reply->element[1]->element[] */
         remaining_replies = scan_reply->element[1]->elements;
     }
+
+    remaining_replies--;
 
     KVOBJ key, value;
     memset(&key, 0, sizeof(KVOBJ));
