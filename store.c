@@ -563,7 +563,7 @@ int iterate_region(struct region_rec* r){
 
 int iterate_file(struct file_rec* r){
 
-    if(scan_reply->element[0] == 0 && remaining_replies ==  0){
+    if(strcmp(scan_reply->element[0], "0") == 0 && remaining_replies ==  0){
         fprintf(stderr, "no more file\n");
         return 1;
     }
