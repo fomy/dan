@@ -43,7 +43,7 @@ void get_selected_filetypes(GHashTable* typeset, int64_t *fs_count, int64_t* fs_
             /* Get all files' IDs */
             int i = 0;
             for(; i<r.fcount; i++){
-                int fid = r.list[r.lsize/2 + i];
+                int fid = r.list[r.rcount + i];
                 if(!g_hash_table_contains(files, &fid)){
                     int *new = malloc(sizeof(int));
                     *new = fid;

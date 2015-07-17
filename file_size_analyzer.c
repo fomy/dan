@@ -52,7 +52,7 @@ int get_filesize_coefficient(unsigned int lb, unsigned int rb){
             int i = 0;
             int64_t filesizes[r.fcount];
             for(; i<r.fcount; i++){
-                file.fid = r.list[r.lsize/2 + i];
+                file.fid = r.list[r.rcount + i];
                 if(search_file(&file) != 1){
                     fprintf(stderr, "Cannot find the required file %d in file db\n", file.fid);
                     exit(-1);
@@ -105,7 +105,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
             chunk_count++;
             int i = 0;
             for(; i<r.fcount; i++){
-                int fid = r.list[r.lsize/2 + i];
+                int fid = r.list[r.rcount + i];
                 if(!g_hash_table_contains(files, &fid)){
                     int *new = malloc(sizeof(int));
                     *new = fid;

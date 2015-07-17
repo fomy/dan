@@ -14,6 +14,12 @@ void reset_chunk_rec(struct chunk_rec *r){
     r->fcount = 0;
 }
 
+void free_chunk_rec(struct chunk_rec *r){
+    if(r->list)
+        free(r->list);
+    free(r);
+}
+
 void reset_container_rec(struct container_rec *r){
     memset(r, 0, sizeof(*r));
     r->slots = REGIONS_PER_CONTAINER;

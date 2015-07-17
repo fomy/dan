@@ -67,9 +67,9 @@ static int read_hashfile(char *hashfile_name)
     int ret;
 
     struct chunk_rec chunk;
+    int list[2];
     memset(&chunk, 0, sizeof(chunk));
-    chunk.lsize = 2;
-    chunk.list = malloc(sizeof(int) * chunk.lsize);
+    chunk.list = list;
     struct container_rec container;
     memset(&container, 0, sizeof(container));
     struct region_rec region;
@@ -164,13 +164,8 @@ static int read_hashfile(char *hashfile_name)
             if(memcmp(chunk.hash, file.maxhash, chunk.hashlen) > 0){
                 memcpy(file.maxhash, chunk.hash, chunk.hashlen);
             }
-            /* We find a hash collision */
-            /*if(memcmp(chunk.hash, col, sizeof(col)) == 0){*/
-                /*print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);*/
-                /*printf("chunk size: %d\n", ci->size);*/
-            /*}*/
 
-            ret = search_chunk(&chunk);
+            ret = search_chunk_local(&chunk);
             if(ret == 0){
                 /* A unique chunk */
                 chunk.csize = ci->size;
@@ -180,7 +175,6 @@ static int read_hashfile(char *hashfile_name)
                 while(add_chunk_to_region(&chunk, &region) != 1){
                     /* the last region is full, write it to the open container */
                     add_region_to_container(&region, &container);
-                    update_region(&region);
                     region_count++;
 
                     /* open a new region */
@@ -188,7 +182,6 @@ static int read_hashfile(char *hashfile_name)
                     region.rid = region_count;
 
                     if(container_full(&container)){
-                        update_container(&container);
                         container_count++;
 
                         reset_container_rec(&container);
@@ -211,63 +204,12 @@ static int read_hashfile(char *hashfile_name)
                     /*assert(chunk.csize == ci->size);*/
                 }
                 /*assert(chunk.cratio == ci->cratio);*/
-
-                /* TO-DO: update the associated container and region records. */
-                if(chunk.rid == region.rid){
-                    /* The chunk is in the open region */
-                    assert(chunk.cid == container.cid);
-
-                    container.lsize += chunk.csize;
-                    region.lsize += chunk.csize;
-                
-                }else if(chunk.cid == container.cid){
-                    struct region_rec target_region;
-                    target_region.rid = chunk.rid;
-                    ret = search_region(&target_region);
-                    if(ret != 1){
-                        fprintf(stderr, "Cannot find the target region\n");
-                        exit(2);
-                    }
-                    target_region.lsize += chunk.csize;
-                    update_region(&target_region);
-
-                    container.lsize += chunk.csize;
-                }else{
-                    struct container_rec target_container;
-                    target_container.cid = chunk.cid;
-                    ret = search_container(&target_container);
-                    if(ret != 1){
-                        fprintf(stderr, "Cannot find the target container\n");
-                        exit(2);
-                    }
-                    target_container.lsize += chunk.csize;
-                    update_container(&target_container);
-
-                    struct region_rec target_region;
-                    target_region.rid = chunk.rid;
-                    ret = search_region(&target_region);
-                    if(ret != 1){
-                        fprintf(stderr, "Cannot find the target region\n");
-                        exit(2);
-                    }
-                    target_region.lsize += chunk.csize;
-                    update_region(&target_region);
-                }
-
             }else{
                 exit(2);
             }
 
-            assert(chunk.lsize >= (chunk.rcount + 1) * 2);
-
-            /* TO-DO: update the chunk.list */
-            /* determine whether we need to update file list */
-            if(!check_file_list(&chunk.list[chunk.lsize/2], chunk.rcount, file_count))
-                chunk.fcount++;
-
-            chunk.list[chunk.rcount] = chunk_count;
-            chunk.list[chunk.lsize/2 + chunk.rcount] = file_count;
-            chunk.rcount++;
+            chunk.list[0] = chunk_count;
+            chunk.list[1] = file_count;
 
             update_chunk(&chunk);
 

@@ -53,7 +53,7 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
             memset(files, 0, sizeof(files));
             int i = 0;
             for(; i < r.fcount; i++){
-                files[i].fid = r.list[r.lsize/2 + i];
+                files[i].fid = r.list[r.rcount + i];
                 search_file(&files[i]);
             }
             

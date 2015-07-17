@@ -3,7 +3,7 @@
 #INCLUDE = -I ${DB_HOME}/include
 #DBLIBS = -L ${DB_HOME}/lib -ldb
 
-DBLIBS = -lhiredis
+DBLIBS = -lhiredis -lglib
 
 CFLAGS = -O2 -g
 CC = gcc

@@ -74,7 +74,7 @@ void collect_intra_redundant_files(){
     while(iterate_chunk(&r, 0) == 0){
 
         if(r.rcount > r.fcount){
-            int *flist = &r.list[r.lsize/2];
+            int *flist = &r.list[r.rcount];
             int i = 1;
             for(; i<r.rcount; i++){
                 if(flist[i] == flist[i-1]){
@@ -140,7 +140,7 @@ void collect_distinct_files(){
             memset(files, 0, sizeof(files));
             int i = 0;
             for(; i < r.fcount; i++){
-                files[i].fid = r.list[r.lsize/2 + i];
+                files[i].fid = r.list[r.rcount + i];
                 search_file(&files[i]);
             }
             for(i=1; i<r.fcount; i++){

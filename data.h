@@ -28,11 +28,9 @@ struct chunk_rec{
      * which is smaller than rcount */
     int fcount;
     /* The list stores the locations and the files referring to it
-     * lsize is the list size 
      * The first part (1/2) includes locations, and the second part (1/2) includes file IDs.
      * The actual number of locations is rcount;
      * the actual number of file IDs is fcount  */
-    int lsize;
     int *list;
 };
 
@@ -72,6 +70,7 @@ struct file_rec{
 };
 
 void reset_chunk_rec(struct chunk_rec *r);
+void free_chunk_rec(struct chunk_rec *r);
 void reset_container_rec(struct container_rec *r);
 int container_full(struct container_rec* r);
 void reset_region_rec(struct region_rec* r);

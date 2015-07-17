@@ -51,22 +51,10 @@ static int export_locality(char *hashfile_name, int locality)
 
     struct chunk_rec chunk;
     memset(&chunk, 0, sizeof(chunk));
-    chunk.lsize = 2;
-    chunk.list = malloc(sizeof(int) * chunk.lsize);
-    struct container_rec container;
-    memset(&container, 0, sizeof(container));
-    struct region_rec region;
-    memset(&region, 0, sizeof(region));
-    struct file_rec file;
-    /*memset(&file, 0, sizeof(file));*/
 
     /* statistics for generating IDs
      * ID starts from 0 */
     int chunk_count = 0;
-    int container_count = 0;
-    int region_count = 0;
-    int file_count = 0;
-
     int dup_count = 0;
 
     handle = hashfile_open(hashfile_name);
@@ -113,8 +101,6 @@ static int export_locality(char *hashfile_name, int locality)
             break;
 
         /* file start */
-        memset(&file, 0, sizeof(file));
-        file.fid = file_count;
 
         while (1) {
             ci = hashfile_next_chunk(handle);

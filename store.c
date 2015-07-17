@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <hiredis/hiredis.h>
+#include <glib.h>
 
 #include "data.h"
 
@@ -14,37 +15,13 @@ typedef struct {
 } KVOBJ;
 
 #define CHUNK_DB 1
-#define REGION_DB 2
-#define CONTAINER_DB 3
-#define FILE_DB 4
+#define FILE_DB 2
 
 static redisContext *redis = NULL;
 static int current_db = -1;
-static int CREATE = 0;
+static GHashTable *chunkdb_cache = NULL;
 
-void open_database(){
-    redis = redisConnect("127.0.0.1", 6379);
-    if(redis != NULL && redis->err){
-        fprintf(stderr, "Error: %s\n", redis->errstr);
-        exit(-1);
-    }
-}
-
-void create_database(){
-    CREATE = 1;
-    open_database();
-}
-
-void close_database(){
-    if(CREATE == 1){
-        redisReply *reply = redisCommand(redis, "SAVE");
-        assert(reply->type == REDIS_REPLY_STATUS);
-        freeReplyObject(reply);
-    }
-    redisFree(redis);
-}
-
-static inline void select_db(int db){
+static void select_db(int db){
     if(current_db != db){
         redisReply *reply = redisCommand(redis, "SELECT %d", db);
         assert(reply->type == REDIS_REPLY_STATUS);
@@ -54,7 +31,7 @@ static inline void select_db(int db){
 }
 
 static void serial_chunk_rec(struct chunk_rec* r, KVOBJ* value){
-    
+
     value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
         sizeof(r->csize) + sizeof(r->cratio) + sizeof(r->fcount) +  2 * r->rcount * sizeof(int);
 
@@ -76,7 +53,7 @@ static void serial_chunk_rec(struct chunk_rec* r, KVOBJ* value){
 
     memcpy(value->data + off, r->list, sizeof(int) * r->rcount);
     off += sizeof(int) * r->rcount;
-    memcpy(value->data + off, &r->list[r->lsize/2], sizeof(int) * r->rcount);
+    memcpy(value->data + off, &r->list[r->rcount], sizeof(int) * r->rcount);
     off += sizeof(int) * r->rcount;
 
     assert(off == value->size);
@@ -98,20 +75,76 @@ static void unserial_chunk_rec(KVOBJ* value, struct chunk_rec *r){
     memcpy(&r->fcount, value->data + len, sizeof(r->fcount));
     len += sizeof(r->fcount);
     if(r->list == NULL){
-        r->lsize = r->rcount * 2 + 2;
-        r->list = malloc(sizeof(int) * r->lsize);
-    }else if(r->lsize < r->rcount * 2 + 2 || 
-           r->lsize > (r->rcount + 1) * 4 ){
-        r->lsize = r->rcount * 2 + 2;
-        r->list = realloc(r->list, sizeof(int) * r->lsize);
+        r->list = malloc(sizeof(int) * r->rcount * 2);
+    }else{
+        r->list = realloc(r->list, sizeof(int) * r->rcount * 2);
     }
 
     memcpy(r->list, value->data + len, sizeof(int) * r->rcount);
     len += sizeof(int) * r->rcount;
-    memcpy(&r->list[r->lsize/2], value->data + len, sizeof(int) * r->rcount);
+    memcpy(&r->list[r->rcount], value->data + len, sizeof(int) * r->rcount);
     len += sizeof(int) * r->rcount;
 
     assert(len == value->size);
+}
+
+void open_database(){
+    redis = redisConnect("127.0.0.1", 6379);
+    if(redis != NULL && redis->err){
+        fprintf(stderr, "Error: %s\n", redis->errstr);
+        exit(-1);
+    }
+}
+
+static gboolean chunk_equal(struct chunk_rec* a, struct chunk_rec* b){
+    return memcmp(a->hash, b->hash, a->hashlen) == 0;
+}
+
+void create_database(){
+    chunkdb_cache = g_hash_table_new_full(g_int64_hash, chunk_equal, NULL, free_chunk_rec);
+    open_database();
+}
+
+static gboolean send_kv(gpointer k, gpointer v, gpointer data){
+    struct chunk_rec *r = v;
+    KVOBJ key, value;
+    memset(&key, 0, sizeof(KVOBJ));
+    memset(&value, 0, sizeof(KVOBJ));
+
+    key.data = r->hash;
+    key.size = r->hashlen;
+
+    serial_chunk_rec(r, &value);
+
+    select_db(CHUNK_DB);
+
+    redisReply *reply = redisCommand(redis, "SET %b %b", key.data, key.size, value.data, value.size);
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to SET chunk\n");
+        exit(-1);
+    }
+
+    assert(reply->type == REDIS_REPLY_STATUS);
+
+    free(value.data);
+    freeReplyObject(reply);
+
+    return TRUE;
+}
+
+void close_database(){
+    if(chunkdb_cache){
+
+        g_hash_table_foreach_remove(chunkdb_cache, send_kv, NULL);
+
+        redisReply *reply = redisCommand(redis, "SAVE");
+        assert(reply->type == REDIS_REPLY_STATUS);
+        freeReplyObject(reply);
+        g_hash_table_destroy(chunkdb_cache);
+        chunkdb_cache = NULL;
+    }
+    redisFree(redis);
 }
 
 /* 
@@ -119,12 +152,30 @@ static void unserial_chunk_rec(KVOBJ* value, struct chunk_rec *r){
  * chunk_rec returns a pointer if exists; otherwise, returns NULL
  * return 1 indicates existence; 0 indicates not exist.
  * */
-int search_chunk(struct chunk_rec *crec){
+int search_chunk_local(struct chunk_rec *r){
 
+    assert(chunkdb_cache);
+
+    struct chunk_rec *chunk = g_hash_table_lookup(chunkdb_cache, r);
+    if(chunk == NULL){
+        reset_chunk_rec(r);
+        return 0;
+    }
+    r->cid = chunk->cid;
+    r->rid = chunk->rid;
+    r->cratio = chunk->cratio;
+    r->csize = chunk->csize;
+    r->fcount = chunk->fcount;
+    r->rcount = chunk->rcount;
+
+    return 1;
+}
+
+int search_chunk(struct chunk_rec *r){
     KVOBJ key, value;
 
-    key.data = crec->hash;
-    key.size = crec->hashlen;
+    key.data = r->hash;
+    key.size = r->hashlen;
 
     value.data = NULL;
     value.size = 0;
@@ -140,13 +191,13 @@ int search_chunk(struct chunk_rec *crec){
 
     int ret = 0;
     if(reply->type == REDIS_REPLY_NIL){
-        reset_chunk_rec(crec);
+        reset_chunk_rec(r);
         ret = 0;
     }else{
         assert(reply->type == REDIS_REPLY_STRING);
         value.data = reply->str;
         value.size = reply->len;
-        unserial_chunk_rec(&value, crec);
+        unserial_chunk_rec(&value, r);
         ret = 1;
     }
 
@@ -155,117 +206,45 @@ int search_chunk(struct chunk_rec *crec){
     return ret;
 }
 
-void update_chunk(struct chunk_rec *crec){
-    KVOBJ key, value;
-    memset(&key, 0, sizeof(KVOBJ));
-    memset(&value, 0, sizeof(KVOBJ));
+void update_chunk(struct chunk_rec *r){
 
-    key.data = crec->hash;
-    key.size = crec->hashlen;
+    assert(chunkdb_cache != NULL);
 
-    serial_chunk_rec(crec, &value);
-
-    select_db(CHUNK_DB);
-
-    redisReply *reply = redisCommand(redis, "SET %b %b", key.data, key.size, value.data, value.size);
-
-    if(reply == NULL){
-        fprintf(stderr, "Error: Fail to SET chunk\n");
-        exit(-1);
-    }
-
-    assert(reply->type == REDIS_REPLY_STATUS);
-
-    free(value.data);
-    freeReplyObject(reply);
-}
-
-int search_container(struct container_rec* r){
-
-    int ret = 0;
-
-    select_db(CONTAINER_DB);
-
-    redisReply *reply = redisCommand(redis, "GET %b", &r->cid, sizeof(r->cid));
-
-    if(reply == NULL){
-        fprintf(stderr, "Error: Fail to GET\n");
-        exit(-1);
-    }
-
-    if(reply->type == REDIS_REPLY_NIL){
-        ret = 0;
+    struct chunk_rec *chunk = g_hash_table_lookup(chunkdb_cache, r);
+    if(chunk == NULL){
+        chunk = malloc(sizeof(struct chunk_rec));
+        memcpy(chunk->hash, r->hash, sizeof(chunk->hash));
+        chunk->cid = r->cid;
+        chunk->rid = r->rid;
+        chunk->cratio = r->cratio;
+        chunk->csize = r->csize;
+        chunk->hashlen = r->hashlen;
+        chunk->fcount = 1;
+        chunk->rcount = 1;
+        chunk->list = malloc(sizeof(int) * 2);
+        memcpy(chunk->list, r->list, sizeof(int) * 2);
+        g_hash_table_insert(chunkdb_cache, chunk, chunk);
     }else{
-        assert(reply->type == REDIS_REPLY_STRING);
-        memcpy(r, reply->str, reply->len);
-        ret = 1;
+        /* determine whether we need to update file list */
+        if(!check_file_list(&chunk->list[chunk->rcount], chunk->rcount, r->list[1]))
+            chunk->fcount++;
+        chunk->rcount++;
+
+        int* oldlist = chunk->list;
+        chunk->list = malloc(sizeof(int) * chunk->rcount * 2);
+
+        memcpy(chunk->list, oldlist, (chunk->rcount - 1) * sizeof(int));
+        chunk->list[chunk->rcount - 1] = r->list[0];
+        memcpy(&chunk->list[chunk->rcount], &oldlist[chunk->rcount - 1], (chunk->rcount - 1) * sizeof(int));
+        chunk->list[chunk->rcount * 2 - 1] = r->list[1];
+
+        free(oldlist);
     }
 
-    freeReplyObject(reply);
-
-    return ret;
-}
-
-void update_container(struct container_rec* r){
-
-    select_db(CONTAINER_DB);
-
-    redisReply *reply = redisCommand(redis, "SET %b %b", &r->cid, sizeof(r->cid), r, sizeof(*r));
-
-    if(reply == NULL){
-        fprintf(stderr, "Cannot put container \n");
-        exit(-1);
-    }
-    
-    assert(reply->type == REDIS_REPLY_STATUS);
-
-    freeReplyObject(reply);
-}
-
-int search_region(struct region_rec* r){
-
-    int ret = 0;
-
-    select_db(REGION_DB);
-
-    redisReply *reply = redisCommand(redis, "GET %b", &r->rid, sizeof(r->rid));
-
-    if(reply == NULL){
-        fprintf(stderr, "Error: Fail to GET\n");
-        exit(-1);
-    }
-
-    if(reply->type == REDIS_REPLY_NIL){
-        ret = 0;
-    }else{
-        assert(reply->type == REDIS_REPLY_STRING);
-        memcpy(r, reply->str, reply->len);
-        ret = 1;
-    }
-
-    freeReplyObject(reply);
-
-    return ret;
-}
-
-void update_region(struct region_rec* r){
-
-    select_db(REGION_DB);
-
-    redisReply *reply = redisCommand(redis, "SET %b %b", &r->rid, sizeof(r->rid), r, sizeof(*r));
-
-    if(reply == NULL){
-        fprintf(stderr, "Cannot put region\n" );
-        exit(-1);
-    }
-
-    assert(reply->type == REDIS_REPLY_STATUS);
-
-    freeReplyObject(reply);
 }
 
 static void serial_file_rec(struct file_rec* r, KVOBJ* value){
-    
+
     value->size = sizeof(r->fid) + sizeof(r->cnum) + sizeof(r->fsize) +
         sizeof(r->hash) + sizeof(r->minhash) + sizeof(r->maxhash) + strlen(r->fname);
 
@@ -383,10 +362,6 @@ static int remaining_replies = 0;
 void init_iterator(char *type){
     if(strcmp(type, "CHUNK") == 0){
         ITERATOR_DB = CHUNK_DB;
-    }else if(strcmp(type, "CONTAINER") == 0){
-        ITERATOR_DB = CONTAINER_DB;
-    }else if(strcmp(type, "REGION") == 0){
-        ITERATOR_DB = REGION_DB;
     }else if(strcmp(type, "FILE") == 0){
         ITERATOR_DB = FILE_DB;
     }else{
@@ -454,7 +429,7 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
     unserial_chunk_rec(&value, r);
 
     if(dedup_fid && r->rcount > r->fcount){
-        int* list = &r->list[r->lsize/2];
+        int* list = &r->list[r->rcount];
         int step = 0, i;
         for(i=1; i<r->rcount; i++){
             if(list[i] == list[i-1]){
@@ -469,95 +444,6 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
     freeReplyObject(reply);
 
-    return 0;
-}
-
-int iterate_container(struct container_rec* r){
-    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
-        fprintf(stderr, "no more container\n");
-        return 1;
-    }
-
-    select_db(ITERATOR_DB);
-
-    if(remaining_replies == 0){
-
-        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
-        freeReplyObject(scan_reply);
-        scan_reply = tmp;
-
-        assert(scan_reply->type == REDIS_REPLY_ARRAY);
-
-        /* This is the length of scan_reply->element[1]->element[] */
-        remaining_replies = scan_reply->element[1]->elements;
-    }
-
-    remaining_replies--;
-
-    KVOBJ key, value;
-    memset(&key, 0, sizeof(KVOBJ));
-    memset(&value, 0, sizeof(KVOBJ));
-
-    key.data = scan_reply->element[1]->element[remaining_replies]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies]->len;
-
-    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
-    assert(reply->type == REDIS_REPLY_STRING);
-
-    value.data = reply->str;
-    value.size = reply->len;
-
-    struct container_rec* v = value.data;
-    r->cid = v->cid;
-    r->psize = v->psize;
-    r->lsize = v->lsize;
-
-    freeReplyObject(reply);
-    return 0;
-}
-
-int iterate_region(struct region_rec* r){
-
-    if(strcmp(scan_reply->element[0]->str, "0") == 0 && remaining_replies ==  0){
-        fprintf(stderr, "no more region\n");
-        return 1;
-    }
-
-    select_db(ITERATOR_DB);
-
-    if(remaining_replies == 0){
-
-        redisReply *tmp = redisCommand(redis, "SCAN %s", scan_reply->element[0]->str);
-        freeReplyObject(scan_reply);
-        scan_reply = tmp;
-
-        assert(scan_reply->type == REDIS_REPLY_ARRAY);
-
-        /* This is the length of scan_reply->element[1]->element[] */
-        remaining_replies = scan_reply->element[1]->elements;
-    }
-
-    remaining_replies--;
-
-    KVOBJ key, value;
-    memset(&key, 0, sizeof(KVOBJ));
-    memset(&value, 0, sizeof(KVOBJ));
-
-    key.data = scan_reply->element[1]->element[remaining_replies]->str;
-    key.size = scan_reply->element[1]->element[remaining_replies]->len;
-
-    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
-    assert(reply->type == REDIS_REPLY_STRING);
-
-    value.data = reply->str;
-    value.size = reply->len;
-
-    struct region_rec *v = value.data;
-    r->rid = v->rid;
-    r->psize = v->psize;
-    r->lsize = v->lsize;
-
-    freeReplyObject(reply);
     return 0;
 }
 
