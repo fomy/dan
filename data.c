@@ -57,15 +57,6 @@ int add_region_to_container(struct region_rec* r, struct container_rec* c){
     return 1;
 }
 
-int check_file_list(int *list, int fcount, int fid){
-    int i = 0;
-    for(; i < fcount; i++){
-        if(list[i] == fid)
-            return 1;
-    }
-    return 0;
-}
-
 void parse_file_suffix(char *path, char *suffix, int suffixlen){
     int i = strlen(path) - 1;
     while(i>=0 && path[i]!= '.' && path[i]!='\\' && path[i]!='/')

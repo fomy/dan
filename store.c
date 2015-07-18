@@ -225,9 +225,6 @@ void update_chunk(struct chunk_rec *r){
         memcpy(chunk->list, r->list, sizeof(int) * 2);
         g_hash_table_insert(chunkdb_cache, chunk, chunk);
     }else{
-        /* determine whether we need to update file list */
-        if(!check_file_list(&chunk->list[chunk->rcount], chunk->rcount, r->list[1]))
-            chunk->fcount++;
         chunk->rcount++;
 
         int* oldlist = chunk->list;
@@ -239,6 +236,10 @@ void update_chunk(struct chunk_rec *r){
         chunk->list[chunk->rcount * 2 - 1] = r->list[1];
 
         free(oldlist);
+
+        /* determine whether we need to update file list */
+        if(chunk->list[chunk->rcount * 2 - 2 ] != r->list[1])
+            chunk->fcount++;
     }
 
 }
