@@ -31,6 +31,8 @@ struct chunk_rec{
      * The first part (1/2) includes locations, and the second part (1/2) includes file IDs.
      * The actual number of locations is rcount;
      * the actual number of file IDs is fcount  */
+    /* Only used in collector */
+    int list_size;
     int *list;
 };
 

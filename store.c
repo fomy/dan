@@ -138,11 +138,11 @@ void close_database(){
 
         g_hash_table_foreach_remove(chunkdb_cache, send_kv, NULL);
 
-        redisReply *reply = redisCommand(redis, "SAVE");
-        assert(reply->type == REDIS_REPLY_STATUS);
-        freeReplyObject(reply);
-        g_hash_table_destroy(chunkdb_cache);
-        chunkdb_cache = NULL;
+        /*redisReply *reply = redisCommand(redis, "SAVE");*/
+        /*assert(reply->type == REDIS_REPLY_STATUS);*/
+        /*freeReplyObject(reply);*/
+        /*g_hash_table_destroy(chunkdb_cache);*/
+        /*chunkdb_cache = NULL;*/
     }
     redisFree(redis);
 }
@@ -221,24 +221,36 @@ void update_chunk(struct chunk_rec *r){
         chunk->hashlen = r->hashlen;
         chunk->fcount = 1;
         chunk->rcount = 1;
+        chunk->list_size = 2;
         chunk->list = malloc(sizeof(int) * 2);
         memcpy(chunk->list, r->list, sizeof(int) * 2);
         g_hash_table_insert(chunkdb_cache, chunk, chunk);
     }else{
+
         chunk->rcount++;
+        assert(chunk->rcount > 1);
+        if(chunk->list_size < chunk->rcount * 2){
+            int* oldlist = chunk->list;
+            int oldlist_size = chunk->list_size;
+            if(chunk->rcount == 2 || chunk->rcount == 3){
+                chunk->list_size = chunk->rcount * 2;
+                chunk->list = malloc(sizeof(int) * chunk->list_size);
+            } else {
+                chunk->list_size = chunk->list_size * 2;
+                assert(chunk->list_size > chunk->rcount * 2);
+                chunk->list = malloc(sizeof(int) * chunk->list_size);
+                assert(chunk->list != NULL);
+            }
+            memcpy(chunk->list, oldlist, (chunk->rcount - 1) * sizeof(int));
+            memcpy(&chunk->list[chunk->list_size/2], &oldlist[oldlist_size/2], (chunk->rcount - 1) * sizeof(int));
+            free(oldlist);
+        }
 
-        int* oldlist = chunk->list;
-        chunk->list = malloc(sizeof(int) * chunk->rcount * 2);
-
-        memcpy(chunk->list, oldlist, (chunk->rcount - 1) * sizeof(int));
         chunk->list[chunk->rcount - 1] = r->list[0];
-        memcpy(&chunk->list[chunk->rcount], &oldlist[chunk->rcount - 1], (chunk->rcount - 1) * sizeof(int));
-        chunk->list[chunk->rcount * 2 - 1] = r->list[1];
+        chunk->list[chunk->list_size/2 + chunk->rcount - 1] = r->list[1];
 
-        free(oldlist);
-
-        /* determine whether we need to update file list */
-        if(chunk->list[chunk->rcount * 2 - 2 ] != r->list[1])
+        /*determine whether we need to update file list*/
+        if(chunk->list[chunk->list_size/2 + chunk->rcount - 2 ] != r->list[1])
             chunk->fcount++;
     }
 
