@@ -236,7 +236,8 @@ static int read_hashfile(char *hashfile_name)
 
     hashfile_close(handle);
 
-    printf("%" PRId64 " bytes in total, eliminating %" PRId64 " bytes, %.5f\n", syssize, dupsize, 1.0*dupsize/syssize);
+    printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f\n", 1.0*syssize/1024/1024/1024, 
+            1.0*dupsize/1024/1024/1024, 1.0*dupsize/syssize);
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
     printf("%d files, excluding %d empty files\n", file_count, empty_files);
     return 0;
