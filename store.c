@@ -303,7 +303,6 @@ static void unserial_file_rec(KVOBJ *value, struct file_rec *r){
 
     memcpy(r->fname, value->data + len, value->size - len);
     r->fname[value->size - len] = 0;
-
 }
 
 int search_file(struct file_rec* r){
@@ -322,7 +321,7 @@ int search_file(struct file_rec* r){
     redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
 
     if(reply == NULL){
-        fprintf(stderr, "Error: Fail to GET\n");
+        fprintf(stderr, "Error: Fail to GET file; %s \n", redis->errstr);
         exit(-1);
     }
 

@@ -117,12 +117,14 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
 
     close_iterator();
 
+    fprintf(stderr, "Find %d files\n", g_hash_table_size(files));
     /* Now, all required files are in files table */
     GHashTableIter iter;
     gpointer key, value;
     g_hash_table_iter_init(&iter, files);
 
     struct file_rec file;
+    memset(&file, 0, sizeof(file));
     while(g_hash_table_iter_next(&iter, &key, &value)){
         file.fid = *(int*)key;
         if(search_file(&file) != 1){
