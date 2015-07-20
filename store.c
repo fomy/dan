@@ -390,6 +390,7 @@ void init_iterator(char *type){
     /* This is the length of scan_reply->element[1]->element[] */
     remaining_replies = scan_reply->element[1]->elements;
 
+    printf("%s, %d\n", scan_reply->element[0]->str, scan_reply->element[1]->elements);
 }
 
 void close_iterator(){
@@ -419,9 +420,17 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
         /* This is the length of scan_reply->element[1]->element[] */
         remaining_replies = scan_reply->element[1]->elements;
+        printf("%s, %d\n", scan_reply->element[0]->str, scan_reply->element[1]->elements);
+
+        if(remaining_replies == 0){
+            assert(strcmp(scan_reply->element[0]->str, "0") == 0);
+            fprintf(stderr, "no more chunk, replying with 0\n");
+            return 1;
+        }
     }
 
     remaining_replies--;
+    assert(remaining_replies >= 0);
 
     KVOBJ key, value;
     memset(&key, 0, sizeof(KVOBJ));
@@ -479,6 +488,12 @@ int iterate_file(struct file_rec* r){
 
         /* This is the length of scan_reply->element[1]->element[] */
         remaining_replies = scan_reply->element[1]->elements;
+            
+        if(remaining_replies == 0){
+            assert(strcmp(scan_reply->element[0]->str, "0") == 0);
+            fprintf(stderr, "no more file, replying with 0\n");
+            return 1;
+        }
     }
 
     remaining_replies--;
