@@ -389,8 +389,6 @@ void init_iterator(char *type){
 
     /* This is the length of scan_reply->element[1]->element[] */
     remaining_replies = scan_reply->element[1]->elements;
-
-    printf("%s, %d\n", scan_reply->element[0]->str, scan_reply->element[1]->elements);
 }
 
 void close_iterator(){
@@ -420,7 +418,6 @@ int iterate_chunk(struct chunk_rec* r, int dedup_fid){
 
         /* This is the length of scan_reply->element[1]->element[] */
         remaining_replies = scan_reply->element[1]->elements;
-        printf("%s, %d\n", scan_reply->element[0]->str, scan_reply->element[1]->elements);
 
         if(remaining_replies == 0){
             assert(strcmp(scan_reply->element[0]->str, "0") == 0);
