@@ -99,7 +99,7 @@ int get_filesize_distribution_by_refs(unsigned int lb, unsigned int rb){
     GHashTable *files = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
 
     fprintf(stderr, "Find the files\n");
-    while(iterate_chunk(&r ,1) == 0){
+    while(iterate_chunk(&r, 1) == 0){
         if(r.rcount >= lb && r.rcount <= rb){
             /* Get all files' IDs */
             chunk_count++;
