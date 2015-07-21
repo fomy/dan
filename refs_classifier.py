@@ -24,22 +24,22 @@ def cluster3(filename):
     return count
 
 def cluster5(filename):
-    # (1,2], (2,3], (3,4], (4,6], (6,infi)
+    # 1, 2, [3,4], [5,6,7], [8,infi)
     count = [0, 0, 0, 0, 0]
 
     file_object = open(filename, "r")
     try:
         for line in file_object:
             ref = float(line)
-            if ref > 6:
+            if ref > 7:
                 count[4] += 1
             elif ref > 4:
                 count[3] += 1
-            elif ref > 3:
-                count[2] += 1
             elif ref > 2:
+                count[2] += 1
+            elif ref == 2:
                 count[1] += 1
-            elif ref > 1:
+            elif ref == 1:
                 count[0] += 1
 
     finally:
