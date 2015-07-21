@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     (opts, args) = getopt.gnu_getopt(sys.argv[1:], "c:", ["cluster"])
 
-    c = 10
+    c = 5
     for o, a in opts:
         if o in ["-c"]:
             c = int(a)
