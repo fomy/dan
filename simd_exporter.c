@@ -11,8 +11,12 @@ void output_simd_trace(){
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
-    int count = 0;
+    int64_t physical_size = 0;
+    int64_t logical_size = 0;
     while(iterate_chunk(&r, 1) == 0){
+
+        physical_size += r.csize;
+        logical_size += r.csize * r.rcount;
 
         printf("%d ", r.rcount);
         struct file_rec file;
@@ -26,6 +30,8 @@ void output_simd_trace(){
         }
         printf("%"PRId64"\n", size);
     }
+
+    printf("DR %.4f\n", 1.0*logical_size/physical_size);
 
     close_iterator();
 
