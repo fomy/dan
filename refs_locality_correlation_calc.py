@@ -65,4 +65,4 @@ if __name__ == "__main__":
 
     (mean, dev_2) = calcMeanAndDev(refs)
     for i in range(lag+1)[1:]:
-        print calcCorrelation(refs, mean, dev_2, i)
+        print "%.4f" % calcCorrelation(refs, mean, dev_2, i)
