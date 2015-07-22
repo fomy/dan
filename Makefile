@@ -11,7 +11,7 @@ MAKE = make
 
 all:
 	$(MAKE) collector 
-	$(MAKE) refs_distribution_exporter refs_locality_exporter
+	$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter
 	$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
 	$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
@@ -45,6 +45,10 @@ file_type_analyzer:store file_type_analyzer.c
 file_exporter:store file_exporter.c
 	$(CC) $(CFLAGS) $(INCLUDE) file_exporter.c store.o data.o -o file_exporter -lglib $(DBLIBS)
 
+# SIMD trace exportr
+simd_exporter:store simd_exporter.c
+	$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c store.o data.o -o simd_exporter $(DBLIBS)
+
 store:store.c data.c
 	$(CC) $(CFLAGS) -c store.c -o store.o $(INCLUDE)
 	$(CC) $(CFLAGS) -c data.c -o data.o $(INCLUDE)
@@ -58,3 +62,4 @@ clean:
 	rm refs_distribution_exporter refs_locality_exporter
 	rm chunk_refs_distance_analyzer chunk_size_analyzer 
 	rm file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
+	rm simd_exporter
