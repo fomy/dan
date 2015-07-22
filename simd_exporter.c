@@ -3,9 +3,10 @@
 #include <string.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <getopt.h>
 #include "store.h"
 
-void output_simd_trace(){
+void output_simd_trace(int dedup){
     init_iterator("CHUNK");
 
     struct chunk_rec r;
@@ -18,7 +19,6 @@ void output_simd_trace(){
         physical_size += r.csize;
         logical_size += r.csize * r.rcount;
 
-        printf("%d ", r.rcount);
         struct file_rec file;
         memset(&file, 0, sizeof(file));
         int i = 0;
@@ -27,11 +27,18 @@ void output_simd_trace(){
             file.fid = r.list[r.rcount + i];
             search_file(&file);
             size += file.fsize;
+            if(!dedup)
+                printf("%"PRId64"\n", file.fsize);
         }
-        printf("%"PRId64"\n", size);
+        if(dedup)
+            printf("%"PRId64"\n", size);
     }
 
-    printf("DR %.4f\n", 1.0*logical_size/physical_size);
+    /* The last number if the deduplication ratio */
+    if(dedup)
+        printf("%.4f\n", 1.0*logical_size/physical_size);
+    else
+        printf("%d\n", 1);
 
     close_iterator();
 
@@ -40,9 +47,23 @@ void output_simd_trace(){
 
 int main(int argc, char *argv[])
 {
+    int dedup = 1;
+    int opt = 0;
+    while ((opt = getopt_long(argc, argv, "n", NULL, NULL))
+            != -1) {
+        switch (opt) {
+            case 'n':
+                /* disable deduplication */
+                dedup = 0;
+                break;
+            default:
+                return -1;
+        }
+    }
+
     open_database();
 
-    output_simd_trace();
+    output_simd_trace(dedup);
 
     close_database();
 
