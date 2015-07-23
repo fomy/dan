@@ -151,7 +151,6 @@ static int read_hashfile(char *hashfile_name)
 
             int hashsize = hashfile_hash_size(handle)/8;
             int chunksize = ci->size;
-            syssize += ci->size;
             memcpy(chunk.hash, ci->hash, hashsize);
             memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
             chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
@@ -208,6 +207,7 @@ static int read_hashfile(char *hashfile_name)
             }else{
                 exit(2);
             }
+            syssize += chunk.csize;
 
             chunk.list[0] = chunk_count;
             chunk.list[1] = file_count;
@@ -236,8 +236,8 @@ static int read_hashfile(char *hashfile_name)
 
     hashfile_close(handle);
 
-    printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f\n", 1.0*syssize/1024/1024/1024, 
-            1.0*dupsize/1024/1024/1024, 1.0*dupsize/syssize);
+    printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f, %.5f\n", 1.0*syssize/1024/1024/1024, 
+            1.0*dupsize/1024/1024/1024, 1.0*dupsize/syssize, 1.0*syssize/(syssize-dupsize));
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
     printf("%d files, excluding %d empty files\n", file_count, empty_files);
     return 0;
