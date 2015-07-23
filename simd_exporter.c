@@ -20,7 +20,8 @@ void output_simd_trace(int dedup){
     while(iterate_chunk(&r, 1) == 0){
 
         physical_size += r.csize;
-        logical_size += r.csize * r.rcount;
+        int64_t rc = r.rcount;
+        logical_size += r.csize * rc;
 
         struct file_rec file;
         memset(&file, 0, sizeof(file));
