@@ -87,6 +87,7 @@ static int read_hashfile(char *hashfile_name)
 
     int file_count = 0;
     int total_chunks = 0;
+    int dup_chunks = 0;
     int collisions = 0;
     int detected_collisions = 0;
     int chunks_read_back = 0;
@@ -174,6 +175,7 @@ static int read_hashfile(char *hashfile_name)
                     collisions++;
                 }
                 free(chunk);
+                dup_chunks++;
             }else{
                 g_hash_table_insert(curfile, chunk->hash, chunk);
             }
@@ -197,6 +199,8 @@ static int read_hashfile(char *hashfile_name)
                             memcmp(target->minhash, chunk->minhash, 20) == 0?"True":"False",
                             target->fsize, chunk->fsize);
                     collisions++;
+                }else{
+                    dup_chunks++;
                 }
 
                 int read_back = 0;
@@ -243,7 +247,9 @@ static int read_hashfile(char *hashfile_name)
 
     g_hash_table_destroy(chunkset);
 
-    fprintf(stderr, "# of chunks read back: %d; %.4f of total chunks\n", chunks_read_back, 1.0*chunks_read_back/total_chunks);
+    fprintf(stderr, "# of chunks read back: %d; %.4f of total chunks, %.4f of dup chunks\n", 
+            chunks_read_back, 1.0*chunks_read_back/total_chunks,
+            1.0*chunks_read_back/dup_chunks);
     fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
     return 0;
 }

@@ -78,6 +78,7 @@ int container_full(struct container_rec* r);
 void reset_region_rec(struct region_rec* r);
 int add_chunk_to_region(struct chunk_rec* c, struct region_rec* r);
 int add_region_to_container(struct region_rec* r, struct container_rec* c);
+void free_file_rec(struct file_rec *r);
 
 void parse_file_suffix(char *path, char *suffix, int suffixlen);
 

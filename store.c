@@ -20,6 +20,8 @@ typedef struct {
 static redisContext *redis = NULL;
 static int current_db = -1;
 static GHashTable *chunkdb_cache = NULL;
+/* For search_file */
+static GHashTable *filedb_cache = NULL;
 
 static void select_db(int db){
     if(current_db != db){
@@ -94,6 +96,7 @@ void open_database(){
         fprintf(stderr, "Error: %s\n", redis->errstr);
         exit(-1);
     }
+    filedb_cache = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, free_file_rec);
 }
 
 static gboolean chunk_equal(struct chunk_rec* a, struct chunk_rec* b){
@@ -306,37 +309,60 @@ static void unserial_file_rec(KVOBJ *value, struct file_rec *r){
 }
 
 int search_file(struct file_rec* r){
-    KVOBJ key, value;
-    memset(&key, 0, sizeof(KVOBJ));
-    memset(&value, 0, sizeof(KVOBJ));
-
-    key.data = &r->fid;
-    key.size = sizeof(r->fid);
-
-    value.data = NULL;
-    value.size = 0;
-
-    select_db(FILE_DB);
-
-    redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
-
-    if(reply == NULL){
-        fprintf(stderr, "Error: Fail to GET file; %s \n", redis->errstr);
-        exit(-1);
-    }
 
     int ret = 0;
-    if(reply->type == REDIS_REPLY_NIL){
-        ret = 0;
-    }else{
-        assert(reply->type == REDIS_REPLY_STRING);
-        value.data = reply->str;
-        value.size = reply->len;
-        unserial_file_rec(&value, r);
-        ret = 1;
+    struct file_rec* cached_file = g_hash_table_lookup(filedb_cache, &r->fid);
+    if(!cached_file){
+        cached_file = malloc(sizeof(*cached_file));
+        memset(cached_file, 0, sizeof(*cached_file));
+
+        KVOBJ key, value;
+        memset(&key, 0, sizeof(KVOBJ));
+        memset(&value, 0, sizeof(KVOBJ));
+
+        key.data = &r->fid;
+        key.size = sizeof(r->fid);
+
+        value.data = NULL;
+        value.size = 0;
+
+        select_db(FILE_DB);
+
+        redisReply *reply = redisCommand(redis, "GET %b", key.data, key.size);
+
+        if(reply == NULL){
+            fprintf(stderr, "Error: Fail to GET file; %s \n", redis->errstr);
+            exit(-1);
+        }
+
+        if(reply->type == REDIS_REPLY_NIL){
+            ret = 0;
+        }else{
+            assert(reply->type == REDIS_REPLY_STRING);
+            value.data = reply->str;
+            value.size = reply->len;
+            unserial_file_rec(&value, cached_file);
+            ret = 1;
+        }
+
+        freeReplyObject(reply);
+
+        g_hash_table_insert(filedb_cache, &cached_file->fid, cached_file);
     }
 
-    freeReplyObject(reply);
+    assert(r->fid == cached_file->fid);
+    r->cnum = cached_file->cnum;
+    r->fsize = cached_file->fsize;
+    memcpy(r->hash, cached_file->hash, sizeof(r->hash));
+    memcpy(r->minhash, cached_file->minhash, sizeof(r->minhash));
+    memcpy(r->maxhash, cached_file->maxhash, sizeof(r->maxhash));
+
+    if(r->fname == NULL)
+        r->fname = malloc(strlen(cached_file->fname)+1);
+    else
+        r->fname = realloc(r->fname, strlen(cached_file->fname)+1);
+
+    strcpy(r->fname, cached_file->fname);
 
     return ret;
 }
@@ -484,7 +510,7 @@ int iterate_file(struct file_rec* r){
 
         /* This is the length of scan_reply->element[1]->element[] */
         remaining_replies = scan_reply->element[1]->elements;
-            
+
         if(remaining_replies == 0){
             assert(strcmp(scan_reply->element[0]->str, "0") == 0);
             fprintf(stderr, "no more file, replying with 0\n");

@@ -70,4 +70,8 @@ void parse_file_suffix(char *path, char *suffix, int suffixlen){
     }
 }
 
-
+void free_file_rec(struct file_rec *r){
+    if(r->fname)
+        free(r->fname);
+    free(r);
+}
