@@ -82,6 +82,7 @@ static int read_hashfile(char *hashfile_name)
 
     handle = hashfile_open(hashfile_name);
 
+    int total_chunks = 0;
     int collisions = 0;
     int detected_collisions = 0;
     int chunks_read_back = 0;
@@ -162,6 +163,8 @@ static int read_hashfile(char *hashfile_name)
             }else{
                 g_hash_table_insert(curfile, chunk->hash, chunk);
             }
+
+            total_chunks++;
         }
 
         GHashTableIter iter;
@@ -200,7 +203,8 @@ static int read_hashfile(char *hashfile_name)
 
     g_hash_table_destroy(chunkset);
 
-    printf("# of chunks read back: %d\n", chunks_read_back);
+    printf("# of chunks read back: %d; %.4f of total chunks\n", chunks_read_back, 1.0*chunks_read_back/total_chunks);
+    printf("# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
     return 0;
 }
 
