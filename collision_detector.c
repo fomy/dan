@@ -37,6 +37,9 @@
 
 struct chunk_item {
     int size;
+    int fid;
+    int rc;
+    int64_t fsize;
     char hash[20];
     char minhash[20];
     char suffix[8];
@@ -82,6 +85,7 @@ static int read_hashfile(char *hashfile_name)
 
     handle = hashfile_open(hashfile_name);
 
+    int file_count = 0;
     int total_chunks = 0;
     int collisions = 0;
     int detected_collisions = 0;
@@ -135,6 +139,11 @@ static int read_hashfile(char *hashfile_name)
         char suffix[8];
 
         parse_file_suffix(hashfile_curfile_path(handle), suffix, 8);
+        if(strncmp(suffix, "edu,", 4) == 0){
+            strcpy(suffix, "edu,?");
+        }else if(strlen(suffix) == 0){
+            strcpy(suffix, ".None");
+        }
 
         GHashTable *curfile = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
 
@@ -149,6 +158,10 @@ static int read_hashfile(char *hashfile_name)
             chunk->size = ci->size;
             memcpy(chunk->hash, ci->hash, hashfile_hash_size(handle)/8);
 
+            chunk->rc = 1;
+
+            chunk->fsize = hashfile_curfile_size(handle);
+
             if(memcmp(chunk->hash, minhash, 20) < 0){
                 memcpy(minhash, chunk->hash, 20);
             }
@@ -156,7 +169,8 @@ static int read_hashfile(char *hashfile_name)
             struct chunk_item* target = g_hash_table_lookup(curfile, chunk->hash);
             if(target){
                 if(target->size != chunk->size){
-                    printf("+Find an intra-file collision! Cannot be detected!\n");
+                    fprintf(stderr, "+Find an intra-file collision! Cannot be detected! File siz = %lld, Type = %s\n", 
+                            hashfile_curfile_size(handle), suffix);
                     collisions++;
                 }
                 free(chunk);
@@ -167,6 +181,8 @@ static int read_hashfile(char *hashfile_name)
             total_chunks++;
         }
 
+        GHashTable *whitelist = g_hash_table_new_full(g_int_hash, g_int_equal, free, NULL);
+
         GHashTableIter iter;
         gpointer key, value;
         g_hash_table_iter_init(&iter, curfile);
@@ -176,26 +192,50 @@ static int read_hashfile(char *hashfile_name)
             struct chunk_item* target = g_hash_table_lookup(chunkset, key);
             if(target){
                 if(target->size != chunk->size){
-                    printf("+Find a collision! Try to detect it!\n");
+                    fprintf(stderr, "+Find a collision between %s <-> %s! Try to detect it!\n", target->suffix, suffix);
+                    fprintf(stderr, "+Details: MinHash = %s, Size %lld <-> %lld\n", 
+                            memcmp(target->minhash, chunk->minhash, 20) == 0?"True":"False",
+                            target->fsize, chunk->fsize);
                     collisions++;
                 }
 
-                if(memcmp(target->minhash, minhash, 20) != 0 && strcmp(target->suffix, suffix) != 0){
+                int read_back = 0;
+                if(memcmp(target->minhash, minhash, 20) != 0){
+                    read_back = 1;
+                } 
+                /*target->rc == 1*/
+                /*if(read_back && strcmp(target->suffix, suffix) != 0){*/
+                    /*read_back = 1;*/
+                    /*printf("+read back %s <-> %s!\n", target->suffix, suffix);*/
+                /*}*/
+                /*if(!g_hash_table_contains(whitelist, &target->fid)){*/
+                    /*read_back = 1;*/
+                /*}*/
+                if(read_back){
                     chunks_read_back++;
                     if(target->size != chunk->size){
-                        printf("-Collision Detected!\n");
+                        fprintf(stderr, "-Collision Detected!\n");
                         detected_collisions++;
+                    }else{
+                        int *fid = malloc(sizeof(*fid));
+                        *fid = target->fid;
+                        g_hash_table_insert(whitelist, fid, fid);
                     }
                 }
+                target->rc++;
             }else{
+                chunk->fid = file_count;
                 memcpy(chunk->minhash, minhash, 20);
                 memcpy(chunk->suffix, suffix, 8);
                 g_hash_table_iter_steal(&iter);
                 g_hash_table_insert(chunkset, chunk->hash, chunk);
             }
+
         }
 
+        g_hash_table_destroy(whitelist);
         g_hash_table_destroy(curfile);
+        file_count++;
 
     }
 
@@ -203,8 +243,8 @@ static int read_hashfile(char *hashfile_name)
 
     g_hash_table_destroy(chunkset);
 
-    printf("# of chunks read back: %d; %.4f of total chunks\n", chunks_read_back, 1.0*chunks_read_back/total_chunks);
-    printf("# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
+    fprintf(stderr, "# of chunks read back: %d; %.4f of total chunks\n", chunks_read_back, 1.0*chunks_read_back/total_chunks);
+    fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
     return 0;
 }
 
