@@ -90,6 +90,9 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
                 else
                     distinct_file++;
             }
+            for(; i < r.fcount; i++){
+                free(files[i].fname);
+            }
         }
     }
 
