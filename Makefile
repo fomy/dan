@@ -11,12 +11,16 @@ MAKE = make
 
 all:
 	$(MAKE) collector 
+	$(MAKE) collision_detector 
 	$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter
 	$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
 	$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
 collector:store collector.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c store.o data.o -o collector libhashfile.o -lcrypto $(DBLIBS)
+
+collision_detector:collision_detector.c libhashfile store
+	$(CC) $(CFLAGS) $(INCLUDE) collision_detector.c -o collision_detector data.o libhashfile.o -lglib
 
 # reference analyzer
 refs_distribution_exporter:store refs_distribution_exporter.c
@@ -59,6 +63,7 @@ libhashfile:libhashfile.c
 clean:
 	rm *.o
 	rm collector 
+	rm collision_detector
 	rm refs_distribution_exporter refs_locality_exporter
 	rm chunk_refs_distance_analyzer chunk_size_analyzer 
 	rm file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
