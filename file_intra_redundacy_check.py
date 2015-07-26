@@ -54,9 +54,6 @@ def get_popular_types(trace):
     print "In size:"
     print top_suffix
 
-    print "In number:"
-    print top_suffix
-
     top_suffix = []
     for suf in suffixset:
         top_suffix.append((suffixset[suf][2], suf))

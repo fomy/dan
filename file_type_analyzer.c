@@ -161,7 +161,7 @@ void get_top_filetypes(GHashTable *typeset, int64_t fs_count, int64_t fs_size, i
         size_iter = g_sequence_iter_next(size_iter);
     }
     printf("%10s %10.4f %10s %10.4f\n", "Sum", 1.0*total_num/fs_count, "Sum", 1.0*total_size/fs_size);
-    printf("%10s %" PRId64 " %10s %" PRId64 "\n", "#Total", fs_count, "Total(MB)", fs_size/1024/1024);
+    printf("%10s %" PRId64 " %10s %.2f \n", "#Total", fs_count, "Total(GB)", 1.0*fs_size/1024/1024/1024);
 
     g_sequence_free(seq_num);
     g_sequence_free(seq_size);
