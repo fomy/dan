@@ -120,10 +120,6 @@ def check_each_pair(trace):
     print >>sys.stderr, top_diff
 
 
-# find all identical files
-# -n check names
-# -s check file size distribution 
-# -p output popular suffix
 if __name__ == "__main__":
 
     (opts, args) = getopt.gnu_getopt(sys.argv[1:], "fdc")
