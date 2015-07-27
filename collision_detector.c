@@ -75,7 +75,7 @@ static char* parse_file_name(char *path){
     return &path[i+1];
 }
 
-static int read_hashfile(char *hashfile_name)
+static int detect_by_minhash(char *hashfile_name)
 {
     char buf[MAXLINE];
     struct hashfile_handle *handle;
@@ -170,7 +170,7 @@ static int read_hashfile(char *hashfile_name)
             struct chunk_item* target = g_hash_table_lookup(curfile, chunk->hash);
             if(target){
                 if(target->size != chunk->size){
-                    fprintf(stderr, "+Find an intra-file collision! Cannot be detected! File siz = %lld, Type = %s\n", 
+                    fprintf(stderr, "+Find an intra-file collision! Cannot be detected! File size = %lld, Type = %s\n", 
                             hashfile_curfile_size(handle), suffix);
                     collisions++;
                 }
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int ret = read_hashfile(argv[1]);
+    int ret = detect_by_minhash(argv[1]);
 
     return ret;
 }
