@@ -51,63 +51,59 @@ def get_file_size_distribution(trace):
 def check_each_pair(trace):
     # (fid1,fid2) : chunknum
     # fid1 < fid2
-    pairset = {}
-    same_name = 0
     same_suffix = 0
     # {(suf1, suf2) : num}
     diff_suffix = {}
     coefficient = 0
+    num = 0
+
+    suffixset = {}
+    fileset = {}
     while True:
         line = list(itertools.islice(trace, 1))
         if len(line) == 0:
             break
         fnum = int(line[0].split()[1])
         dflines = list(itertools.islice(trace, fnum))
-        
+
         chunk = line[0].split()[2]
 
-        for i in range(len(dflines)):
+        for i in xrange(len(dflines)):
             file_i = dflines[i].split()
-            for j in range(i+1, len(dflines)):
+            if int(file_i[1]) not in fileset:
+                fileset[int(file_i[1])] = None
+            if file_i[4] not in suffixset:
+                suffixset[file_i[4]] = None
+
+            for j in xrange(i+1, len(dflines)):
+                num += 1
                 file_j = dflines[j].split()
                 if file_i[-1] == file_j[-1]:
                     # a pair of similar/identical files; skip
                     continue
                 assert(int(file_i[1]) < int(file_j[1]))
-                # file id pair
-                key = (int(file_i[1]), int(file_j[1]))
-                if key not in pairset:
-                    pairset[key] = 0
-                    # file name
-                    if file_i[3] == file_j[3]:
-                        same_name += 1
-                    # suffix
-                    if file_i[4] == file_j[4]:
-                        same_suffix += 1
+
+                # suffix
+                if file_i[4] != file_j[4]:
+                    if file_i[4] < file_j[4]:
+                        diff = (file_i[4], file_j[4])
                     else:
-                        if file_i[4] < file_j[4]:
-                            diff = (file_i[4], file_j[4])
-                        else:
-                            diff = (file_j[4], file_i[4])
+                        diff = (file_j[4], file_i[4])
 
-                        if diff not in diff_suffix:
-                            diff_suffix[diff] = 0
-                        diff_suffix[diff] += 1
+                    if diff not in diff_suffix:
+                        diff_suffix[diff] = 0
+                    diff_suffix[diff] += 1
 
-                    f1size = int(file_i[2])
-                    f2size = int(file_j[2])
-                    mean = (f1size + f2size)/2.0
-                    dev = ((f1size - mean)*(f1size - mean) + (f2size - mean)*(f2size - mean))/2.0
-                    co = math.sqrt(dev)/mean
-                    print "%.4f" % co
-                    coefficient += co 
+                f1size = int(file_i[2])
+                f2size = int(file_j[2])
+                mean = (f1size + f2size)/2.0
+                dev = ((f1size - mean)*(f1size - mean) + (f2size - mean)*(f2size - mean))/2.0
+                co = math.sqrt(dev)/mean
+                print "%.4f" % co
+                coefficient += co 
 
-                pairset[key] += 1
-
-    num = len(pairset)
     coefficient /= num
-    print >>sys.stderr, "Probability of same name and same type: %10f and  %10f in %d pairs" % (1.0*same_name/num, 
-            1.0*same_suffix/num, num)
+    print >>sys.stderr, "%d files, %d suffixes,  %d pairs" % (len(fileset), len(suffixset), num)
     print >>sys.stderr, "The coefficient of sizes of distinct files: %10f" % coefficient
 
     top_diff = []
