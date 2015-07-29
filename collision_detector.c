@@ -65,6 +65,10 @@ static gboolean hash_equal(gpointer a, gpointer b){
     return !memcmp(a, b, 6);
 }
 
+static gboolean minhash_equal(gpointer a, gpointer b){
+    return !memcmp(a, b, 20);
+}
+
 static void print_chunk_hash(uint64_t chunk_count, const uint8_t *hash,
         int hash_size_in_bytes)
 {
@@ -215,6 +219,8 @@ static int detect_by_segment_minhash(char *hashfile_name)
 
     chunkset = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
 
+    GHashTable* minhashset = g_hash_table_new_full(g_int64_hash, minhash_equal, free, NULL);
+
     if (!handle) {
         fprintf(stderr, "Error opening hash file: %d!", errno);
         return -1;
@@ -304,6 +310,12 @@ static int detect_by_segment_minhash(char *hashfile_name)
                 int bits;
                 memcpy(&bits, chunk->hash, 4);
                 if((bits & (segment_size-1)) == 0 || g_hash_table_size(cursegment) > max_segment_size){
+                    /* A new segment */
+                    if(!g_hash_table_contains(minhashset, minhash)){
+                        char* new_minhash = malloc(sizeof(minhash));
+                        memcpy(new_minhash, minhash, sizeof(minhash));
+                        g_hash_table_insert(minhashset, new_minhash, new_minhash);
+                    }
 
                     check_cursegment(cursegment);
                     g_hash_table_remove_all(cursegment);
@@ -315,6 +327,11 @@ static int detect_by_segment_minhash(char *hashfile_name)
             total_chunks++;
         }
 
+        if(!g_hash_table_contains(minhashset, minhash)){
+            char* new_minhash = malloc(sizeof(minhash));
+            memcpy(new_minhash, minhash, sizeof(minhash));
+            g_hash_table_insert(minhashset, new_minhash, new_minhash);
+        }
         check_cursegment(cursegment);
         g_hash_table_destroy(cursegment);
         file_count++;
@@ -330,6 +347,9 @@ static int detect_by_segment_minhash(char *hashfile_name)
             chunks_read_back, 1.0*chunks_read_back/total_chunks,
             1.0*chunks_read_back/dup_chunks, 1.0*dup_chunks/total_chunks);
     fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
+    fprintf(stderr, "# of bins: %d\n", g_hash_table_size(minhashset));
+
+    g_hash_table_destroy(minhashset);
     return 0;
 }
 
