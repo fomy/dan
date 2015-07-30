@@ -40,7 +40,7 @@ void output_nodedup_simd_trace(){
     printf("%.1f\n", 1.0);
 
     fprintf(stderr, "Physical Size = %"PRId64", Logical Size = %"PRId64", D/R = %.4f\n", physical_size, logical_size, 1.0*logical_size/physical_size);
-    fprintf(stderr, "Sum = %"PRId64", Count = %"PRId64", Avg. = %.4f MB\n", sum, count, sum/count);
+    fprintf(stderr, "Sum = %.4f MB, Count = %"PRId64", Avg. = %.4f MB\n", sum, count, sum/count);
 
     close_iterator();
 
@@ -81,7 +81,7 @@ void output_dedup_simd_trace(){
     printf("%.4f\n", 1.0*logical_size/physical_size);
 
     fprintf(stderr, "Physical Size = %"PRId64", Logical Size = %"PRId64", D/R = %.4f\n", physical_size, logical_size, 1.0*logical_size/physical_size);
-    fprintf(stderr, "Sum = %"PRId64", Count = %"PRId64", Avg. = %.4f MB\n", sum, count, sum/count);
+    fprintf(stderr, "Sum = %.4f MB, Count = %"PRId64", Avg. = %.4f MB\n", sum, count, sum/count);
 
     close_iterator();
 
