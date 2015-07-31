@@ -5,6 +5,38 @@
 #include <inttypes.h>
 #include <getopt.h>
 #include "store.h"
+
+void output_filesize_by_dup_trace(){
+    init_iterator("CHUNK");
+
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+
+    double sum = 0;
+    int64_t count = 0;
+    while(iterate_chunk(&r, 0) == 0){
+
+        if(r.rcount == 1)
+            continue;
+
+        struct file_rec file;
+        memset(&file, 0, sizeof(file));
+        int i = 1;
+        for(; i < r.rcount; i++){
+            file.fid = r.list[r.rcount + i];
+            search_file(&file);
+            count++;
+            sum += 1.0*file.fsize/1024/1024;
+            printf("%"PRId64"\n", file.fsize);
+        }
+    }
+
+    fprintf(stderr, "Sum = %.4f MB, Count = %"PRId64", Avg. = %.4f MB\n", sum, count, sum/count);
+
+    close_iterator();
+
+}
+
 void output_nodedup_simd_trace(){
     init_iterator("CHUNK");
 
@@ -25,11 +57,9 @@ void output_nodedup_simd_trace(){
         struct file_rec file;
         memset(&file, 0, sizeof(file));
         int i = 0;
-        int64_t size = 0;
         for(; i < r.rcount; i++){
             file.fid = r.list[r.rcount + i];
             search_file(&file);
-            size += file.fsize;
             count++;
             sum += 1.0*file.fsize/1024/1024;
             printf("%"PRId64"\n", file.fsize);
@@ -91,13 +121,17 @@ void output_dedup_simd_trace(){
 int main(int argc, char *argv[])
 {
     int dedup = 1;
+    int check_file_size = 0;
     int opt = 0;
-    while ((opt = getopt_long(argc, argv, "n", NULL, NULL))
+    while ((opt = getopt_long(argc, argv, "nf", NULL, NULL))
             != -1) {
         switch (opt) {
             case 'n':
                 /* disable deduplication */
                 dedup = 0;
+                break;
+            case 'f':
+                check_file_size = 1;
                 break;
             default:
                 return -1;
@@ -106,7 +140,9 @@ int main(int argc, char *argv[])
 
     open_database();
 
-    if(dedup)
+    if(check_file_size)
+        output_filesize_by_dup_trace();
+    else if(dedup)
         output_dedup_simd_trace();
     else
         output_nodedup_simd_trace();
