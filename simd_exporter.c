@@ -154,7 +154,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
         sum *= r.rcount;
         lsize += sum;
         psize += r.csize;
-        printf("%d\n", r.fcount);
+        /*printf("%d\n", r.fcount);*/
     }
 
     printf("%.4f\n", 1.0*lsize/psize);
@@ -265,6 +265,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
 
             chunk_count++;
         }
+        restore_file_bytes += hashfile_curfile_size(handle);
     }
 
     hashfile_close(handle);
