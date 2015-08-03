@@ -26,9 +26,12 @@ void modeA_simd_trace(){
     int64_t lsize = 0;
     while(iterate_chunk(&r, 0) == 0){
 
-        lsize += r.csize * r.rcount;
+        int64_t sum = r.csize;
+        sum *= r.rcount;
+
+        lsize += sum;
         psize += r.csize;
-        printf("%d\n", r.csize * r.rcount);
+        printf("%"PRId64"\n", sum);
     }
 
     printf("%.4f\n", 1.0*lsize/psize);
@@ -121,9 +124,9 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
         int progress = restore_bytes * 100 / sys_capacity;
         while(progress >= step && step <= 99){
             if(mode == MODEB)
-                printf("%.4f\n", 1.0*restore_files/sys_file_number);
+                printf("%.6f\n", 1.0*restore_files/sys_file_number);
             else
-                printf("%.4f\n", 1.0*restore_file_bytes/sys_capacity);
+                printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
             step++;
         }
     }
@@ -147,7 +150,9 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     int64_t lsize = 0;
     while(iterate_chunk(&r, 0) == 0){
 
-        lsize += r.csize * r.rcount;
+        int64_t sum = r.csize;
+        sum *= r.rcount;
+        lsize += sum;
         psize += r.csize;
         printf("%d\n", r.fcount);
     }
@@ -251,9 +256,9 @@ void modeBC_dedup_simd_trace(char* path, int mode){
                 int progress = restore_bytes * 100/psize;
                 while(progress >= step && step <= 99){
                     if(mode == MODEB)
-                        printf("%.4f\n", 1.0*restore_files/sys_file_number);
+                        printf("%.6f\n", 1.0*restore_files/sys_file_number);
                     else
-                        printf("%.4f\n", 1.0*restore_file_bytes/lsize);
+                        printf("%.6f\n", 1.0*restore_file_bytes/lsize);
                     step++;
                 }
             }
