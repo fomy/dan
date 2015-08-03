@@ -9,6 +9,10 @@
 #include "libhashfile.h"
 #include "store.h"
 
+#define MODEA 1
+#define MODEB 2
+#define MODEC 3
+
 /* In mode A, only LSE model 
  * Only Dedup trace
  */
@@ -34,7 +38,7 @@ void modeA_simd_trace(){
 
 }
 
-void modeB_nodedup_simd_trace(char *path){
+void modeBC_nodedup_simd_trace(char *path, int mode){
     char buf[4096];
     struct hashfile_handle *handle;
     const struct chunk_info *ci;
@@ -69,6 +73,9 @@ void modeB_nodedup_simd_trace(char *path){
             sys_capacity += ci->size;
         }
 
+        if(hashfile_curfile_size(handle) == 0)
+            continue;
+
         sys_file_number++;
     }
 
@@ -83,6 +90,7 @@ void modeB_nodedup_simd_trace(char *path){
 
     int64_t restore_bytes = 0;
     int64_t restore_files = 0;
+    int64_t restore_file_bytes = 0;
 
     /* 1 - 99 */
     int step = 1;
@@ -104,11 +112,18 @@ void modeB_nodedup_simd_trace(char *path){
             restore_bytes += ci->size;
         }
 
+        if(hashfile_curfile_size(handle) == 0)
+            continue;
+
         restore_files++;
+        restore_file_bytes += hashfile_curfile_size(handle);
 
         int progress = restore_bytes * 100 / sys_capacity;
         while(progress >= step && step <= 99){
-            printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+            if(mode == MODEB)
+                printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+            else
+                printf("%.4f\n", 1-1.0*restore_file_bytes/sys_capacity);
             step++;
         }
     }
@@ -157,8 +172,8 @@ void modeB_dedup_simd_trace(char* path){
     /* All files lost */
     puts("1");
 
-    int restore_bytes = 0;
-    int restore_files = 0;
+    int64_t restore_bytes = 0;
+    int64_t restore_files = 0;
 
     /* 1 - 99 */
     int step = 1;
@@ -218,7 +233,7 @@ void modeB_dedup_simd_trace(char* path){
 
                     if(*chunknum == 0){
                         /* a file is restored */
-                        fprintf(stderr, "complete file %d\n", fid);
+                        /*fprintf(stderr, "complete file %d\n", fid);*/
                         restore_files++;
                     }
                     assert(*chunknum >= 0);
@@ -238,10 +253,6 @@ void modeB_dedup_simd_trace(char* path){
 
     hashfile_close(handle);
 }
-
-#define MODEA 1
-#define MODEB 2
-#define MODEC 3
 
 int main(int argc, char *argv[])
 {
@@ -270,9 +281,10 @@ int main(int argc, char *argv[])
 
     if(mode == MODEA){
         modeA_simd_trace();
-    }else if(mode == MODEB){
+    }else{
+        assert(mode == MODEB || mode == MODEC);
         if(!dedup)
-            modeB_nodedup_simd_trace(path);
+            modeBC_nodedup_simd_trace(path, mode);
         else{
             open_database();
 
