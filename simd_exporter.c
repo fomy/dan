@@ -248,6 +248,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
                         /* a file is restored */
                         /*fprintf(stderr, "complete file %d\n", fid);*/
                         restore_files++;
+                        restore_file_bytes += rfile->size;
                     }
                     assert(rfile->chunk_num >= 0);
                 }
@@ -265,8 +266,9 @@ void modeBC_dedup_simd_trace(char* path, int mode){
 
             chunk_count++;
         }
-        restore_file_bytes += hashfile_curfile_size(handle);
     }
+
+    fprintf(stderr, "restore %.4f GB\n", 1.0*restore_file_bytes/1024/1024/1024);
 
     hashfile_close(handle);
 }
