@@ -50,8 +50,8 @@ file_exporter:store file_exporter.c
 	$(CC) $(CFLAGS) $(INCLUDE) file_exporter.c store.o data.o -o file_exporter -lglib $(DBLIBS)
 
 # SIMD trace exportr
-simd_exporter:store simd_exporter.c
-	$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c store.o data.o -o simd_exporter $(DBLIBS)
+simd_exporter:store simd_exporter.c libhashfile
+	$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c store.o data.o -o simd_exporter libhashfile.o -lglib  $(DBLIBS)
 
 store:store.c data.c
 	$(CC) $(CFLAGS) -c store.c -o store.o $(INCLUDE)

@@ -259,6 +259,25 @@ void update_chunk(struct chunk_rec *r){
 
 }
 
+int64_t get_chunk_number(){
+    select_db(CHUNK_DB);
+
+    redisReply *reply = redisCommand(redis, "DBSIZE");
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to DBSIZE\n");
+        exit(-1);
+    }
+
+    assert(reply->type == REDIS_REPLY_INTEGER);
+
+    int64_t number = reply->integer;
+
+    freeReplyObject(reply);
+    
+    return number;
+}
+
 static void serial_file_rec(struct file_rec* r, KVOBJ* value){
 
     value->size = sizeof(r->fid) + sizeof(r->cnum) + sizeof(r->fsize) +
@@ -537,4 +556,23 @@ int iterate_file(struct file_rec* r){
 
     freeReplyObject(reply);
     return 0;
+}
+
+int64_t get_file_number(){
+    select_db(FILE_DB);
+
+    redisReply *reply = redisCommand(redis, "DBSIZE");
+
+    if(reply == NULL){
+        fprintf(stderr, "Error: Fail to DBSIZE\n");
+        exit(-1);
+    }
+
+    assert(reply->type == REDIS_REPLY_INTEGER);
+
+    int64_t number = reply->integer;
+
+    freeReplyObject(reply);
+
+    return number;
 }
