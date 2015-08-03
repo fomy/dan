@@ -181,6 +181,12 @@ void modeB_dedup_simd_trace(char* path){
             if (!ci) /* exit the loop if it was the last chunk */
                 break;
 
+            int hashsize = hashfile_hash_size(handle)/8;
+            int chunksize = ci->size;
+            memcpy(chunk.hash, ci->hash, hashsize);
+            memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+            chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+
             if(search_chunk(&chunk) != 1){
                 fprintf(stderr, "Cannot find the chunk\n");
                 exit(-1);
