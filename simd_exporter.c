@@ -131,7 +131,13 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
     hashfile_close(handle);
 }
 
-void modeB_dedup_simd_trace(char* path){
+struct restoring_file{
+    int id;
+    int chunk_num;
+    int64_t size;
+};
+
+void modeBC_dedup_simd_trace(char* path, int mode){
     init_iterator("CHUNK");
 
     struct chunk_rec r;
@@ -174,6 +180,7 @@ void modeB_dedup_simd_trace(char* path){
 
     int64_t restore_bytes = 0;
     int64_t restore_files = 0;
+    int64_t restore_file_bytes = 0;
 
     /* 1 - 99 */
     int step = 1;
@@ -215,34 +222,38 @@ void modeB_dedup_simd_trace(char* path){
                 int i = 0;
                 for(;i<chunk.rcount; i++){
                     int fid = chunk.list[chunk.rcount + i];
-                    int* chunknum = g_hash_table_lookup(files, &fid);
-                    if(!chunknum){
+                    struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
+                    if(!rfile){
                         struct file_rec fr;
                         memset(&fr, 0, sizeof(fr));
                         fr.fid = fid;
                         search_file(&fr);
 
-                        chunknum = malloc(sizeof(int));
-                        *chunknum = fr.cnum;
-                        int* file_id = malloc(sizeof(int));
-                        *file_id = fid;
+                        rfile = malloc(sizeof(*rfile));
 
-                        g_hash_table_insert(files, file_id, chunknum);
+                        rfile->id = fid;
+                        rfile->chunk_num = fr.cnum;
+                        rfile->size = fr.fsize;
+
+                        g_hash_table_insert(files, &rfile->id, rfile);
                     }
-                    *chunknum -= 1;
+                    rfile->chunk_num--;
 
-                    if(*chunknum == 0){
+                    if(rfile->chunk_num == 0){
                         /* a file is restored */
                         /*fprintf(stderr, "complete file %d\n", fid);*/
                         restore_files++;
                     }
-                    assert(*chunknum >= 0);
+                    assert(rfile->chunk_num >= 0);
                 }
 
                 restore_bytes += chunk.csize;
                 int progress = restore_bytes * 100/psize;
                 while(progress >= step && step <= 99){
-                    printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+                    if(mode == MODEB)
+                        printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+                    else
+                        printf("%.4f\n", 1-1.0*restore_file_bytes/lsize);
                     step++;
                 }
             }
@@ -288,7 +299,7 @@ int main(int argc, char *argv[])
         else{
             open_database();
 
-            modeB_dedup_simd_trace(path);
+            modeBC_dedup_simd_trace(path, mode);
 
             close_database();
         }
