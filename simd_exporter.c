@@ -132,7 +132,7 @@ void modeB_dedup_simd_trace(char* path){
     }
 
     printf("%.4f\n", 1.0*lsize/psize);
-    fprintf(stderr, "LS = %.4 GB, PS = %.4 GB, D/F = %.4f\n", 1.0*lsize/1024/1024/1024,
+    fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 1.0*lsize/1024/1024/1024,
             1.0*psize/1024/1024/1024, 1.0*lsize/psize);
 
     close_iterator();
@@ -214,7 +214,7 @@ void modeB_dedup_simd_trace(char* path){
 
                         g_hash_table_insert(files, file_id, chunknum);
                     }
-                    *chunknum--;
+                    *chunknum -= 1;
 
                     if(*chunknum == 0){
                         /* a file is restored */
