@@ -86,7 +86,7 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
     handle = hashfile_open(path);
 
     /* All files lost */
-    puts("1");
+    puts("0");
 
     int64_t restore_bytes = 0;
     int64_t restore_files = 0;
@@ -121,9 +121,9 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
         int progress = restore_bytes * 100 / sys_capacity;
         while(progress >= step && step <= 99){
             if(mode == MODEB)
-                printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+                printf("%.4f\n", 1.0*restore_files/sys_file_number);
             else
-                printf("%.4f\n", 1-1.0*restore_file_bytes/sys_capacity);
+                printf("%.4f\n", 1.0*restore_file_bytes/sys_capacity);
             step++;
         }
     }
@@ -176,7 +176,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     int chunk_count = 0;
 
     /* All files lost */
-    puts("1");
+    puts("0");
 
     int64_t restore_bytes = 0;
     int64_t restore_files = 0;
@@ -251,9 +251,9 @@ void modeBC_dedup_simd_trace(char* path, int mode){
                 int progress = restore_bytes * 100/psize;
                 while(progress >= step && step <= 99){
                     if(mode == MODEB)
-                        printf("%.4f\n", 1-1.0*restore_files/sys_file_number);
+                        printf("%.4f\n", 1.0*restore_files/sys_file_number);
                     else
-                        printf("%.4f\n", 1-1.0*restore_file_bytes/lsize);
+                        printf("%.4f\n", 1.0*restore_file_bytes/lsize);
                     step++;
                 }
             }
