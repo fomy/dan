@@ -35,7 +35,7 @@ void modeA_simd_trace(){
         printf("%"PRId64"\n", sum);
     }
 
-    printf("%.4f\n", 1.0*lsize/psize);
+    printf("%.6f\n", 1.0*lsize/psize);
     fprintf(stderr, "D/F = %.4f\n", 1.0*lsize/psize);
 
     close_iterator();
@@ -48,49 +48,43 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
     else
         printf("MODE C:NO DEDUP\n");
 
-    char buf[4096];
-    struct hashfile_handle *handle;
-    const struct chunk_info *ci;
-
     int64_t sys_capacity = 0;
     int64_t sys_file_number = 0;
 
-    handle = hashfile_open(path);
+    init_iterator("CHUNK");
 
-    if (!handle) {
-        fprintf(stderr, "Error opening hash file: %d!", errno);
-        exit(-1);
+    struct chunk_rec chunk;
+    memset(&chunk, 0, sizeof(chunk));
+    struct file_rec fr;
+    memset(&fr, 0, sizeof(fr));
+
+    while(iterate_chunk(&chunk, 0) == 0){
+
+        int64_t sum = chunk.csize;
+        sum *= chunk.rcount;
+        sys_capacity += sum;
+        int i = 0;
+        int prev = -1;
+        for(; i<chunk.rcount; i++){
+            int fid = chunk.list[chunk.rcount+i];
+            fr.fid = fid;
+            search_file(&fr);
+
+            prev = fid;
+            if(mode == MODEC)
+                printf("%"PRId64"\n", fr.fsize);
+        }
     }
 
-    while (1) {
-        int ret = hashfile_next_file(handle);
-        if (ret < 0) {
-            fprintf(stderr,
-                    "Cannot get next file from a hashfile: %d!\n",
-                    errno);
-            exit(-1);
-        }
+    close_iterator();
 
-        if (ret == 0)
-            break;
-
-        while (1) {
-            ci = hashfile_next_chunk(handle);
-            if (!ci) /* exit the loop if it was the last chunk */
-                break;
-
-            sys_capacity += ci->size;
-        }
-
-        if(hashfile_curfile_size(handle) == 0)
-            continue;
-
-        sys_file_number++;
-    }
-
-    hashfile_close(handle);
+    sys_file_number = get_file_number();
 
     fprintf(stderr, "capacity = %.4f GB, Files = %"PRId64"\n", 1.0*sys_capacity/1024/1024/1024, sys_file_number);
+
+    char buf[4096];
+    struct hashfile_handle *handle;
+    const struct chunk_info *ci;
 
     handle = hashfile_open(path);
 
@@ -191,7 +185,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
         }
     }
 
-    printf("%.4f\n", 1.0*lsize/psize);
+    printf("%.6f\n", 1.0*lsize/psize);
     fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 1.0*lsize/1024/1024/1024,
             1.0*psize/1024/1024/1024, 1.0*lsize/psize);
 
