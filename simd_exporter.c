@@ -109,6 +109,8 @@ void modeA_simd_trace(char *path){
     }
     g_hash_table_destroy(chunks);
     hashfile_close(handle);
+
+    puts("1.0");
 }
 
 void modeBC_nodedup_simd_trace(char *path, int mode){
@@ -201,6 +203,7 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
     }
 
     hashfile_close(handle);
+    puts("1.0");
 }
 
 struct restoring_file{
@@ -355,6 +358,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     fprintf(stderr, "restore %.4f GB\n", 1.0*restore_file_bytes/1024/1024/1024);
 
     hashfile_close(handle);
+    puts("1.0");
 }
 
 int main(int argc, char *argv[])
