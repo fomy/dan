@@ -17,6 +17,7 @@
  * Only Dedup trace
  */
 void modeA_simd_trace(){
+    printf("MODE A:DEDUP\n");
     init_iterator("CHUNK");
 
     struct chunk_rec r;
@@ -42,6 +43,11 @@ void modeA_simd_trace(){
 }
 
 void modeBC_nodedup_simd_trace(char *path, int mode){
+    if(mode == MODEB)
+        printf("MODE B:NO DEDUP\n");
+    else
+        printf("MODE C:NO DEDUP\n");
+
     char buf[4096];
     struct hashfile_handle *handle;
     const struct chunk_info *ci;
@@ -145,6 +151,11 @@ static gboolean hash20_equal(gpointer a, gpointer b){
 }
 
 void modeBC_dedup_simd_trace(char* path, int mode){
+    if(mode == MODEB)
+        printf("MODE B:DEDUP\n");
+    else
+        printf("MODE C:DEDUP\n");
+
     init_iterator("CHUNK");
 
     struct chunk_rec chunk;
