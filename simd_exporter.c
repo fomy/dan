@@ -140,21 +140,44 @@ struct restoring_file{
     int64_t size;
 };
 
+static gboolean hash20_equal(gpointer a, gpointer b){
+    return !memcmp(a, b, 20);
+}
+
 void modeBC_dedup_simd_trace(char* path, int mode){
     init_iterator("CHUNK");
 
-    struct chunk_rec r;
-    memset(&r, 0, sizeof(r));
+    struct chunk_rec chunk;
+    memset(&chunk, 0, sizeof(chunk));
+    struct file_rec fr;
+    memset(&fr, 0, sizeof(fr));
 
     int64_t psize = 0;
     int64_t lsize = 0;
-    while(iterate_chunk(&r, 0) == 0){
+    while(iterate_chunk(&chunk, 0) == 0){
 
-        int64_t sum = r.csize;
-        sum *= r.rcount;
+        int64_t sum = chunk.csize;
+        sum *= chunk.rcount;
         lsize += sum;
-        psize += r.csize;
-        /*printf("%d\n", r.fcount);*/
+        psize += chunk.csize;
+        if(mode == MODEB){
+            printf("%d\n", chunk.fcount);
+        }else{
+            int i = 0;
+            int prev = -1;
+            int64_t sum = 0;
+            for(; i<chunk.rcount; i++){
+                int fid = chunk.list[chunk.rcount+i];
+                if(fid == prev)
+                    continue;
+                fr.fid = fid;
+                search_file(&fr);
+
+                sum+=fr.fsize;
+                prev = fid;
+            }
+            printf("%"PRId64"\n", sum);
+        }
     }
 
     printf("%.4f\n", 1.0*lsize/psize);
@@ -176,10 +199,6 @@ void modeBC_dedup_simd_trace(char* path, int mode){
         exit(-1);
     }
 
-    struct chunk_rec chunk;
-    memset(&chunk, 0, sizeof(chunk));
-    int chunk_count = 0;
-
     /* All files lost */
     puts("0");
 
@@ -190,7 +209,8 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     /* 1 - 99 */
     int step = 1;
 
-    GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, free, free);
+    GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, free);
+    GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, free, NULL);
 
     while (1) {
         int ret = hashfile_next_file(handle);
@@ -214,23 +234,14 @@ void modeBC_dedup_simd_trace(char* path, int mode){
             memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
             chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
-            if(search_chunk(&chunk) != 1){
-                fprintf(stderr, "Cannot find the chunk\n");
-                exit(-1);
-            }
-
-            if(chunk.list[0] != chunk_count){
-                /* skip this chunk */
-                assert(chunk.list[0] < chunk_count);
-            }else{
+            if(!g_hash_table_contains(chunks, chunk.hash)){
                 /* restore a chunk */
+                search_chunk(&chunk);
                 int i = 0;
                 for(;i<chunk.rcount; i++){
                     int fid = chunk.list[chunk.rcount + i];
                     struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
                     if(!rfile){
-                        struct file_rec fr;
-                        memset(&fr, 0, sizeof(fr));
                         fr.fid = fid;
                         search_file(&fr);
 
@@ -262,12 +273,15 @@ void modeBC_dedup_simd_trace(char* path, int mode){
                         printf("%.6f\n", 1.0*restore_file_bytes/lsize);
                     step++;
                 }
+                char* hash = malloc(20);
+                memcpy(hash, chunk.hash, 20);
+                g_hash_table_insert(chunks, hash, hash);
             }
-
-            chunk_count++;
         }
     }
 
+    g_hash_table_destroy(files);
+    g_hash_table_destroy(chunks);
     fprintf(stderr, "restore %.4f GB\n", 1.0*restore_file_bytes/1024/1024/1024);
 
     hashfile_close(handle);
