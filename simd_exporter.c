@@ -13,25 +13,29 @@
 #define MODEB 2
 #define MODEC 3
 
+static gboolean hash20_equal(gpointer a, gpointer b){
+    return !memcmp(a, b, 20);
+}
+
 /* In mode A, only LSE model 
  * Only Dedup trace
  */
-void modeA_simd_trace(){
+void modeA_simd_trace(char *path){
     printf("MODE A:DEDUP\n");
     init_iterator("CHUNK");
 
-    struct chunk_rec r;
-    memset(&r, 0, sizeof(r));
+    struct chunk_rec chunk;
+    memset(&chunk, 0, sizeof(chunk));
 
     int64_t psize = 0;
     int64_t lsize = 0;
-    while(iterate_chunk(&r, 0) == 0){
+    while(iterate_chunk(&chunk, 0) == 0){
 
-        int64_t sum = r.csize;
-        sum *= r.rcount;
+        int64_t sum = chunk.csize;
+        sum *= chunk.rcount;
 
         lsize += sum;
-        psize += r.csize;
+        psize += chunk.csize;
         printf("%"PRId64"\n", sum);
     }
 
@@ -40,6 +44,71 @@ void modeA_simd_trace(){
 
     close_iterator();
 
+    char buf[4096];
+    struct hashfile_handle *handle;
+    const struct chunk_info *ci;
+
+    handle = hashfile_open(path);
+
+    if (!handle) {
+        fprintf(stderr, "Error opening hash file: %d!", errno);
+        exit(-1);
+    }
+
+    int64_t restore_logical_bytes = 0;
+    int64_t restore_physical_bytes = 0;
+    GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, free, NULL);
+
+    /* 1 - 99 */
+    int step = 1;
+    /* All chunks lost */
+    puts("0");
+
+    while (1) {
+        int ret = hashfile_next_file(handle);
+        if (ret < 0) {
+            fprintf(stderr,
+                    "Cannot get next file from a hashfile: %d!\n",
+                    errno);
+            exit(-1);
+        }
+        if (ret == 0)
+            break;
+
+        while (1) {
+            ci = hashfile_next_chunk(handle);
+            if (!ci) /* exit the loop if it was the last chunk */
+                break;
+
+            int hashsize = hashfile_hash_size(handle)/8;
+            int chunksize = ci->size;
+            memcpy(chunk.hash, ci->hash, hashsize);
+            memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+            chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+
+            if(!g_hash_table_contains(chunks, chunk.hash)){
+                search_chunk(&chunk);
+                int64_t sum = chunk.csize;
+                sum *= chunk.rcount;
+
+                restore_physical_bytes += chunk.csize;
+                restore_logical_bytes += sum;
+
+                int progress = restore_physical_bytes * 100/psize;
+                while(progress >= step && step <= 99){
+                    printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
+                    step++;
+                }
+                char* hash = malloc(20);
+                memcpy(hash, chunk.hash, 20);
+                g_hash_table_insert(chunks, hash, hash);
+
+            }
+
+        }
+    }
+    g_hash_table_destroy(chunks);
+    hashfile_close(handle);
 }
 
 void modeBC_nodedup_simd_trace(char *path, int mode){
@@ -139,10 +208,6 @@ struct restoring_file{
     int chunk_num;
     int64_t size;
 };
-
-static gboolean hash20_equal(gpointer a, gpointer b){
-    return !memcmp(a, b, 20);
-}
 
 void modeBC_dedup_simd_trace(char* path, int mode){
     if(mode == MODEB)
@@ -319,7 +384,7 @@ int main(int argc, char *argv[])
 
     open_database();
     if(mode == MODEA){
-        modeA_simd_trace();
+        modeA_simd_trace(path);
     }else{
         assert(mode == MODEB || mode == MODEC);
         if(!dedup)
