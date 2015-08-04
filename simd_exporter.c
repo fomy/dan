@@ -323,6 +323,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    open_database();
     if(mode == MODEA){
         modeA_simd_trace();
     }else{
@@ -330,13 +331,10 @@ int main(int argc, char *argv[])
         if(!dedup)
             modeBC_nodedup_simd_trace(path, mode);
         else{
-            open_database();
-
             modeBC_dedup_simd_trace(path, mode);
-
-            close_database();
         }
     }
+    close_database();
 
     return 0;
 }
