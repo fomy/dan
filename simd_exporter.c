@@ -183,7 +183,10 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
             ci = hashfile_next_chunk(handle);
             if (!ci) /* exit the loop if it was the last chunk */
                 break;
-            restore_bytes += ci->size;
+            /* It will overflow */
+            /*restore_bytes += ci->size;*/
+            int size = ci->size;
+            restore_bytes += size;
         }
 
         if(hashfile_curfile_size(handle) == 0)
