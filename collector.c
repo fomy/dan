@@ -223,6 +223,8 @@ static int read_hashfile(char *hashfile_name)
 
         MD5_Final(file.hash, &ctx);
 
+        if(file.fsize != hashfile_curfile_size(handle))
+            printf("%"PRId64" != %"PRIu64"\n", file.fsize, hashfile_curfile_size(handle));
         /* file end; update it */
         if(file.fsize > 0){
             update_file(&file);

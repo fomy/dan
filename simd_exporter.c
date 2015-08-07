@@ -205,12 +205,15 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
             }
         }
 
-        assert(filesize == hashfile_curfile_size(handle));
-        if(hashfile_curfile_size(handle) == 0)
+        /*if(filesize != hashfile_curfile_size(handle))*/
+            /*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+        /*else*/
+            /*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+        if(filesize == 0)
             continue;
 
         restore_files++;
-        restore_file_bytes += hashfile_curfile_size(handle);
+        restore_file_bytes += filesize;
 
     }
 
