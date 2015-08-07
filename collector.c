@@ -230,6 +230,7 @@ static int read_hashfile(char *hashfile_name)
         }else{
             empty_files++;
         }
+        assert(file.fsize == hashfile_curfile_size(handle));
         free(file.fname);
         file.fname = NULL;
     }

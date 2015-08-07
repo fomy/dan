@@ -159,6 +159,11 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
 
     handle = hashfile_open(path);
 
+    if (!handle) {
+        fprintf(stderr, "Error opening hash file: %d!", errno);
+        exit(-1);
+    }
+
     /* All files lost */
     puts("0");
 
@@ -179,6 +184,7 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
         if (ret == 0)
             break;
 
+        int64_t filesize = 0;
         while (1) {
             ci = hashfile_next_chunk(handle);
             if (!ci) /* exit the loop if it was the last chunk */
@@ -187,22 +193,25 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
             /*restore_bytes += ci->size;*/
             int size = ci->size;
             restore_bytes += size;
+            filesize += size;
+
+            int progress = restore_bytes * 100 / sys_capacity;
+            while(progress >= step && step <= 99){
+                if(mode == MODEB)
+                    printf("%.6f\n", 1.0*restore_files/sys_file_number);
+                else
+                    printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
+                step++;
+            }
         }
 
+        assert(filesize == hashfile_curfile_size(handle));
         if(hashfile_curfile_size(handle) == 0)
             continue;
 
         restore_files++;
         restore_file_bytes += hashfile_curfile_size(handle);
 
-        int progress = restore_bytes * 100 / sys_capacity;
-        while(progress >= step && step <= 99){
-            if(mode == MODEB)
-                printf("%.6f\n", 1.0*restore_files/sys_file_number);
-            else
-                printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
-            step++;
-        }
     }
 
     hashfile_close(handle);
