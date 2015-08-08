@@ -139,7 +139,7 @@ static int read_hashfile(char *hashfile_name)
         char* fname = parse_file_name(hashfile_curfile_path(handle));
         file.fname = malloc(strlen(fname)+1);
         strcpy(file.fname, fname);
-        printf("%d:%s, %lld\n", file.fid, file.fname, hashfile_curfile_size(handle));
+        printf("%d:%s, %"PRIu64"\n", file.fid, file.fname, hashfile_curfile_size(handle));
 
         MD5_CTX ctx;
         MD5_Init(&ctx); 
@@ -229,6 +229,7 @@ static int read_hashfile(char *hashfile_name)
         if(file.fsize > 0){
             update_file(&file);
             file_count++;
+            assert(hashfile_curfile_size(handle) == file.fsize);
         }else{
             empty_files++;
         }

@@ -87,7 +87,7 @@ void modeA_simd_trace(char *path){
             chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
             if(!g_hash_table_contains(chunks, chunk.hash)){
-                search_chunk(&chunk);
+                assert(search_chunk(&chunk));
                 int64_t sum = chunk.csize;
                 sum *= chunk.rcount;
 
@@ -324,7 +324,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
 
             if(!g_hash_table_contains(chunks, chunk.hash)){
                 /* restore a chunk */
-                search_chunk(&chunk);
+                assert(search_chunk(&chunk));
                 int i = 0;
                 for(;i<chunk.rcount; i++){
                     int fid = chunk.list[chunk.rcount + i];
