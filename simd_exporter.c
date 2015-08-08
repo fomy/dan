@@ -17,11 +17,42 @@ static gboolean hash20_equal(gpointer a, gpointer b){
     return !memcmp(a, b, 20);
 }
 
-/* In mode A, only LSE model 
- * Only Dedup trace
+
+/* The number of lines relies on chunksize;
+ * Only chunk-level trace requires this  */
+static print_a_chunk(int chunksize, int64_t content){
+    int lines_no = (chunksize+1023)/1024;
+    assert(lines_no >= 1);
+    assert(lines_no <= 16);
+    int i = 0;
+    for(; i<lines_no; i++)
+        printf("%"PRId64"\n", content);
+}
+
+/* there is no trace for chunk-level with dedup */
+/* Fixed-sized file system block of 8 KB if weighted */
+void chunk_nodedup_simd_trace(char *path, int weighted){
+    printf("CHUNK:NO DEDUP:");
+    if(weighted)
+        printf("WEIGHTED\n");
+    else
+        printf("NOT WEIGHTED\n");
+
+    fprintf(stderr, "Not trace for this model; only for test\n");
+}
+
+/*  
+ * Chunk level, without file semantics 
+ * Dedup
+ * (no trace for chunk-level no-dedup model)
  */
-void modeA_simd_trace(char *path){
-    printf("MODE A:DEDUP\n");
+void chunk_dedup_simd_trace(char *path, int weighted){
+    printf("CHUNK:DEDUP:");
+    if(weighted)
+        printf("WEIGHTED\n");
+    else
+        printf("NOT WEIGHTED\n");
+
     init_iterator("CHUNK");
 
     struct chunk_rec chunk;
@@ -29,6 +60,8 @@ void modeA_simd_trace(char *path){
 
     int64_t psize = 0;
     int64_t lsize = 0;
+    int64_t total_chunks = 0;
+    /* USE part */
     while(iterate_chunk(&chunk, 0) == 0){
 
         int64_t sum = chunk.csize;
@@ -36,11 +69,17 @@ void modeA_simd_trace(char *path){
 
         lsize += sum;
         psize += chunk.csize;
-        printf("%"PRId64"\n", sum);
+
+        total_chunks += chunk.rcount;
+
+        if(weighted)
+            print_a_chunk(chunk.csize, sum);
+        else
+            print_a_chunk(chunk.csize, chunk.rcount);
     }
 
     printf("%.6f\n", 1.0*lsize/psize);
-    fprintf(stderr, "D/F = %.4f\n", 1.0*lsize/psize);
+    fprintf(stderr, "D/F = %.4f, total_chunks = %"PRId64"\n", 1.0*lsize/psize, total_chunks);
 
     close_iterator();
 
@@ -57,8 +96,10 @@ void modeA_simd_trace(char *path){
 
     int64_t restore_logical_bytes = 0;
     int64_t restore_physical_bytes = 0;
+    int64_t restore_chunks = 0;
     GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, free, NULL);
 
+    /* RAID Failure part */
     /* 1 - 99 */
     int step = 1;
     /* All chunks lost */
@@ -90,19 +131,22 @@ void modeA_simd_trace(char *path){
                 assert(search_chunk(&chunk));
                 int64_t sum = chunk.csize;
                 sum *= chunk.rcount;
+                restore_chunks += chunk.rcount;
 
                 restore_physical_bytes += chunk.csize;
                 restore_logical_bytes += sum;
 
                 int progress = restore_physical_bytes * 100/psize;
                 while(progress >= step && step <= 99){
-                    printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
+                    if(weighted)
+                        printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
+                    else
+                        printf("%.6f\n", 1.0*restore_chunks/total_chunks);
                     step++;
                 }
                 char* hash = malloc(20);
                 memcpy(hash, chunk.hash, 20);
                 g_hash_table_insert(chunks, hash, hash);
-
             }
 
         }
@@ -113,11 +157,15 @@ void modeA_simd_trace(char *path){
     puts("1.0");
 }
 
-void modeBC_nodedup_simd_trace(char *path, int mode){
-    if(mode == MODEB)
-        printf("MODE B:NO DEDUP\n");
+/*
+ * File level, no dedup
+ * weighted by size?
+ */
+void file_nodedup_simd_trace(char *path, int weighted){
+    if(weighted)
+        printf("FILE:NO DEDUP:WEIGHTED\n");
     else
-        printf("MODE C:NO DEDUP\n");
+        printf("FILE:NO DEDUP:NOT WEIGHTED\n");
 
     int64_t sys_capacity = 0;
     int64_t sys_file_number = 0;
@@ -129,6 +177,7 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
     struct file_rec fr;
     memset(&fr, 0, sizeof(fr));
 
+    /* USE part */
     while(iterate_chunk(&chunk, 0) == 0){
 
         int64_t sum = chunk.csize;
@@ -142,8 +191,12 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
             search_file(&fr);
 
             prev = fid;
-            if(mode == MODEC)
+            if(weighted)
                 printf("%"PRId64"\n", fr.fsize);
+            else{
+                /* A single file is lost */
+                /* no need to output */
+            }
         }
     }
 
@@ -164,6 +217,7 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
         exit(-1);
     }
 
+    /* RAID Failure part */
     /* All files lost */
     puts("0");
 
@@ -189,20 +243,21 @@ void modeBC_nodedup_simd_trace(char *path, int mode){
             ci = hashfile_next_chunk(handle);
             if (!ci) /* exit the loop if it was the last chunk */
                 break;
-            /* It will overflow */
-            /*restore_bytes += ci->size;*/
-            int size = ci->size;
-            restore_bytes += size;
-            filesize += size;
 
             int progress = restore_bytes * 100 / sys_capacity;
             while(progress >= step && step <= 99){
-                if(mode == MODEB)
+                if(!weighted)
                     printf("%.6f\n", 1.0*restore_files/sys_file_number);
                 else
                     printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
                 step++;
             }
+
+            /* It will overflow */
+            /*restore_bytes += ci->size;*/
+            int size = ci->size;
+            restore_bytes += size;
+            filesize += size;
         }
 
         /*if(filesize != hashfile_curfile_size(handle))*/
@@ -227,11 +282,11 @@ struct restoring_file{
     int64_t size;
 };
 
-void modeBC_dedup_simd_trace(char* path, int mode){
-    if(mode == MODEB)
-        printf("MODE B:DEDUP\n");
+void file_dedup_simd_trace(char* path, int weighted){
+    if(weighted)
+        printf("FILE:DEDUP:WEIGHTED\n");
     else
-        printf("MODE C:DEDUP\n");
+        printf("FILE:DEDUP:NOT WEIGHTED\n");
 
     init_iterator("CHUNK");
 
@@ -240,6 +295,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     struct file_rec fr;
     memset(&fr, 0, sizeof(fr));
 
+    /* USE part */
     int64_t psize = 0;
     int64_t lsize = 0;
     while(iterate_chunk(&chunk, 0) == 0){
@@ -248,7 +304,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
         sum *= chunk.rcount;
         lsize += sum;
         psize += chunk.csize;
-        if(mode == MODEB){
+        if(!weighted){
             printf("%d\n", chunk.fcount);
         }else{
             int i = 0;
@@ -294,6 +350,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
     int64_t restore_files = 0;
     int64_t restore_file_bytes = 0;
 
+    /* RAID Failure part */
     /* 1 - 99 */
     int step = 1;
 
@@ -355,7 +412,7 @@ void modeBC_dedup_simd_trace(char* path, int mode){
                 restore_bytes += chunk.csize;
                 int progress = restore_bytes * 100/psize;
                 while(progress >= step && step <= 99){
-                    if(mode == MODEB)
+                    if(!weighted)
                         printf("%.6f\n", 1.0*restore_files/sys_file_number);
                     else
                         printf("%.6f\n", 1.0*restore_file_bytes/lsize);
@@ -378,39 +435,45 @@ void modeBC_dedup_simd_trace(char* path, int mode){
 
 int main(int argc, char *argv[])
 {
-    int dedup = 1;
-    int check_file_size = 0;
+    /* dedup? */
+    int dedup = 0;
+    /* weighted by file/chunk size? */
+    int weighted = 0;
+    /* chunk level or file level */
+    int file_level = 0;
+
     int opt = 0;
-    int mode = MODEA;
-    char *path = NULL;
-    while ((opt = getopt_long(argc, argv, "m:nf:", NULL, NULL))
+    while ((opt = getopt_long(argc, argv, "fwd", NULL, NULL))
             != -1) {
         switch (opt) {
-            case'm':
-                mode = atoi(optarg);
+            case'f':
+                file_level = 1;
                 break;
-            case 'n':
-                /* disable deduplication */
-                dedup = 0;
+            case 'd':
+                dedup = 1;
                 break;
-            case 'f':
-                path = optarg;
+            case 'w':
+                weighted = 1;
                 break;
             default:
+                fprintf(stderr, "invalid option\n");
                 return -1;
         }
     }
 
     open_database();
-    if(mode == MODEA){
-        modeA_simd_trace(path);
-    }else{
-        assert(mode == MODEB || mode == MODEC);
+
+    char *path = argv[optind];
+    if(!file_level){
         if(!dedup)
-            modeBC_nodedup_simd_trace(path, mode);
-        else{
-            modeBC_dedup_simd_trace(path, mode);
-        }
+            chunk_nodedup_simd_trace(path, weighted);
+        else
+            chunk_dedup_simd_trace(path, weighted);
+    }else{
+        if(!dedup)
+            file_nodedup_simd_trace(path, weighted);
+        else
+            file_dedup_simd_trace(path, weighted);
     }
     close_database();
 
