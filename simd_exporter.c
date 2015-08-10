@@ -32,11 +32,13 @@ static print_a_chunk(int chunksize, int64_t content){
 /* there is no trace for chunk-level with dedup */
 /* Fixed-sized file system block of 8 KB if weighted */
 void chunk_nodedup_simd_trace(char *path, int weighted){
-    printf("CHUNK:NO DEDUP:");
-    if(weighted)
-        printf("WEIGHTED\n");
-    else
-        printf("NOT WEIGHTED\n");
+    if(weighted){
+        fprintf(stderr, "CHUNK:NO DEDUP:WEIGHTED\n");
+        printf("CHUNK:NO DEDUP:WEIGHTED\n");
+    }else{
+        fprintf(stderr, "CHUNK:NO DEDUP:NOT WEIGHTED\n");
+        printf("CHUNK:NO DEDUP:NOT WEIGHTED\n");
+    }
 
     fprintf(stderr, "Not trace for this model; only for test\n");
 }
@@ -47,11 +49,13 @@ void chunk_nodedup_simd_trace(char *path, int weighted){
  * (no trace for chunk-level no-dedup model)
  */
 void chunk_dedup_simd_trace(char *path, int weighted){
-    printf("CHUNK:DEDUP:");
-    if(weighted)
-        printf("WEIGHTED\n");
-    else
-        printf("NOT WEIGHTED\n");
+    if(weighted){
+        fprintf(stderr, "CHUNK:DEDUP:WEIGHTED\n");
+        printf("CHUNK:DEDUP:WEIGHTED\n");
+    }else{
+        fprintf(stderr, "CHUNK:DEDUP:NOT WEIGHTED\n");
+        printf("CHUNK:DEDUP:NOT WEIGHTED\n");
+    }
 
     init_iterator("CHUNK");
 
@@ -162,10 +166,13 @@ void chunk_dedup_simd_trace(char *path, int weighted){
  * weighted by size?
  */
 void file_nodedup_simd_trace(char *path, int weighted){
-    if(weighted)
+    if(weighted){
         printf("FILE:NO DEDUP:WEIGHTED\n");
-    else
+        fprintf(stderr, "FILE:NO DEDUP:WEIGHTED\n");
+    }else{
         printf("FILE:NO DEDUP:NOT WEIGHTED\n");
+        fprintf(stderr, "FILE:NO DEDUP:NOT WEIGHTED\n");
+    }
 
     int64_t sys_capacity = 0;
     int64_t sys_file_number = 0;
@@ -283,10 +290,13 @@ struct restoring_file{
 };
 
 void file_dedup_simd_trace(char* path, int weighted){
-    if(weighted)
+    if(weighted){
         printf("FILE:DEDUP:WEIGHTED\n");
-    else
+        fprintf(stderr, "FILE:DEDUP:WEIGHTED\n");
+    }else{
         printf("FILE:DEDUP:NOT WEIGHTED\n");
+        fprintf(stderr, "FILE:DEDUP:NOT WEIGHTED\n");
+    }
 
     init_iterator("CHUNK");
 
