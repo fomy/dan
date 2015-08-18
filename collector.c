@@ -229,7 +229,7 @@ static int read_hashfile(char *hashfile_name)
         if(file.fsize > 0){
             update_file(&file);
             file_count++;
-            assert(hashfile_curfile_size(handle) == file.fsize);
+            /*assert(hashfile_curfile_size(handle) == file.fsize);*/
         }else{
             empty_files++;
         }

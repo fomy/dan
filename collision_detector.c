@@ -136,7 +136,7 @@ static void check_curfile(GHashTable* curfile){
     }
 }
 
-static void check_cursegment(GHashTable* cursegment){
+static void check_cursegment(GHashTable* cursegment, int enable_wl){
 
     GHashTableIter iter;
     gpointer key, value;
@@ -176,11 +176,12 @@ static void check_cursegment(GHashTable* cursegment){
 
             int read_back = 0;
             if(memcmp(target->minhash, minhash, 20) != 0){
+                read_back = 1;
                 int *sc = g_hash_table_lookup(whitelist, &target->sid);
                 assert(sc);
                 assert(sc[1]>0);
-                if(sc[1] <= 1){
-                    read_back = 1;
+                if(enable_wl && sc[1] > 1){
+                    read_back = 0;
                 }
             } 
 
@@ -205,7 +206,7 @@ static void check_cursegment(GHashTable* cursegment){
     g_hash_table_destroy(whitelist);
 }
 
-static int detect_by_segment_minhash(char *hashfile_name)
+static int detect_by_segment_minhash(char *hashfile_name, int enable_wl)
 {
     char buf[MAXLINE];
     struct hashfile_handle *handle;
@@ -317,7 +318,7 @@ static int detect_by_segment_minhash(char *hashfile_name)
                         g_hash_table_insert(minhashset, new_minhash, new_minhash);
                     }
 
-                    check_cursegment(cursegment);
+                    check_cursegment(cursegment, enable_wl);
                     g_hash_table_remove_all(cursegment);
                     memset(minhash, 0xff, 20);
                     segment_count++;
@@ -332,7 +333,9 @@ static int detect_by_segment_minhash(char *hashfile_name)
             memcpy(new_minhash, minhash, sizeof(minhash));
             g_hash_table_insert(minhashset, new_minhash, new_minhash);
         }
-        check_cursegment(cursegment);
+
+        check_cursegment(cursegment, enable_wl);
+
         g_hash_table_destroy(cursegment);
         file_count++;
         segment_count++;
@@ -476,7 +479,8 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     int segment = 0;
-    while ((opt = getopt_long(argc, argv, "s:", NULL, NULL))
+    int enable_wl = 0;
+    while ((opt = getopt_long(argc, argv, "s:w", NULL, NULL))
             != -1) {
         switch (opt) {
             case 's':
@@ -484,6 +488,9 @@ int main(int argc, char *argv[])
                 segment_size = atoi(optarg);
                 min_segment_size = segment_size/4;
                 max_segment_size = segment_size*4;
+                break;
+            case 'w':
+                enable_wl = 1;
                 break;
             default:
                 return -1;
@@ -494,7 +501,7 @@ int main(int argc, char *argv[])
     if(segment == 0)
         ret = detect_by_file_minhash(argv[optind]);
     else
-        ret = detect_by_segment_minhash(argv[optind]);
+        ret = detect_by_segment_minhash(argv[optind], enable_wl);
 
     return ret;
 }
