@@ -2,26 +2,72 @@
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
+#include <assert.h>
 #include "store.h"
 
 int get_chunksize_distribution(unsigned int lb, unsigned int rb){
     init_iterator("CHUNK");
 
-    int64_t sum = 0;
-    int count = 0;
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
 
+    int64_t sum_a = 0;
+    int64_t sum_u = 0;
+    int64_t sum_d = 0;
+    int64_t sum_l = 0;
+    int64_t sum_m = 0;
+    int64_t sum_h = 0;
+    int64_t sum_eh = 0;
+
+    int count_a = 0;
+    int count_u = 0;
+    int count_d = 0;
+    int count_l = 0;
+    int count_m = 0;
+    int count_h = 0;
+    int count_eh = 0;
+
     while(iterate_chunk(&r, 0) == 0){
+
+        sum_a += r.csize;
+        count_a++;
+
+        if(r.rcount == 1){
+            sum_u += r.csize;
+            count_u++;
+        }else{
+            assert(r.rcount >= 2);
+            sum_d += r.csize;
+            count_d++;
+
+            if(r.rcount <= 2){
+                sum_l += r.csize;
+                count_l++;
+            }else if(r.rcount <= 4){
+                sum_m += r.csize;
+                count_m++;
+            }else if(r.rcount <=7){
+                sum_h += r.csize;
+                count_h++;
+            }else{
+                sum_eh += r.csize;
+                count_eh++;
+            }
+        }
+
         if(r.rcount >= lb && r.rcount <= rb){
             fprintf(stdout, "%d\n", r.csize);
-            sum += r.csize;
-            count++;
         }
     }
 
-    fprintf(stderr, "avg. chunk size = %10.2f\n", 1.0*sum/count);
+    fprintf(stderr, "ALL = %10.2f\n", 1.0*sum_a/count_a);
+    fprintf(stderr, "UNI = %10.2f\n", 1.0*sum_u/count_u);
+    fprintf(stderr, "DUP = %10.2f\n", 1.0*sum_d/count_d);
+    fprintf(stderr, "LOW = %10.2f\n", 1.0*sum_l/count_l);
+    fprintf(stderr, "MID = %10.2f\n", 1.0*sum_m/count_m);
+    fprintf(stderr, "HIGH = %10.2f\n", 1.0*sum_h/count_h);
+    fprintf(stderr, "EH = %10.2f\n", 1.0*sum_eh/count_eh);
 
     close_iterator();
 
