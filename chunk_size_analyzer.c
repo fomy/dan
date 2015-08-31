@@ -7,7 +7,7 @@
 int get_chunksize_distribution(unsigned int lb, unsigned int rb){
     init_iterator("CHUNK");
 
-    float sum = 0;
+    int64_t sum = 0;
     int count = 0;
 
     struct chunk_rec r;
@@ -21,7 +21,7 @@ int get_chunksize_distribution(unsigned int lb, unsigned int rb){
         }
     }
 
-    fprintf(stderr, "avg. chunk size = %10.2f\n", sum/count);
+    fprintf(stderr, "avg. chunk size = %10.2f\n", 1.0*sum/count);
 
     close_iterator();
 
