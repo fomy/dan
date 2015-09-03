@@ -243,11 +243,11 @@ def get_popular_types(trace):
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "dpt")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "spt")
 
     trace = open(args[0], "r")
     for o, a in opts:
-        if o in ["-d"]:
+        if o in ["-s"]:
             get_file_size_distribution(trace)
         elif o in ["-p"]:
             get_popular_types(trace)

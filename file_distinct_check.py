@@ -118,13 +118,13 @@ def check_each_pair(trace):
 
 if __name__ == "__main__":
 
-    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "fdc")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "fsc")
 
     trace = open(args[0], "r")
     for o, a in opts:
         if o in ["-f"]:
             how_many_files(trace)
-        elif o in ["-d"]:
+        elif o in ["-s"]:
             get_file_size_distribution(trace)
         elif o in ["-c"]:
             check_each_pair(trace)
