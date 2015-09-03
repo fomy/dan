@@ -27,6 +27,7 @@ def cluster5(filename):
     # 1, 2, [3,4], [5,6,7], [8,infi)
     count = [0, 0, 0, 0, 0]
 
+    max = 1
     file_object = open(filename, "r")
     try:
         for line in file_object:
@@ -41,7 +42,11 @@ def cluster5(filename):
                 count[1] += 1
             elif ref == 1:
                 count[0] += 1
+            
+            if ref > max:
+                max = ref
 
+        print max
     finally:
         file_object.close()
 
