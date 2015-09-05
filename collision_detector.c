@@ -50,6 +50,7 @@ struct chunk_item {
 static int segment_size = 0;
 static int max_segment_size = 0;
 static int min_segment_size = 0;
+static int wl_threshold = 1;
 
 static GHashTable* chunkset = NULL;
 static int file_count = 0;
@@ -60,9 +61,10 @@ static int detected_collisions = 0;
 static int chunks_read_back = 0;
 static char minhash[20];
 static char suffix[8];
+static int hashlen = 6;
 
 static gboolean hash_equal(gpointer a, gpointer b){
-    return !memcmp(a, b, 6);
+    return !memcmp(a, b, hashlen);
 }
 
 static gboolean minhash_equal(gpointer a, gpointer b){
@@ -180,7 +182,7 @@ static void check_cursegment(GHashTable* cursegment, int enable_wl){
                 int *sc = g_hash_table_lookup(whitelist, &target->sid);
                 assert(sc);
                 assert(sc[1]>0);
-                if(enable_wl && sc[1] > 1){
+                if(enable_wl && sc[1] > wl_threshold){
                     read_back = 0;
                 }
             } 
@@ -218,36 +220,14 @@ static int detect_by_segment_minhash(char *hashfile_name, int enable_wl)
 
     int total_chunks = 0;
 
-    chunkset = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
+    chunkset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free);
 
-    GHashTable* minhashset = g_hash_table_new_full(g_int64_hash, minhash_equal, free, NULL);
+    GHashTable* minhashset = g_hash_table_new_full(g_int_hash, minhash_equal, free, NULL);
 
     if (!handle) {
         fprintf(stderr, "Error opening hash file: %d!", errno);
         return -1;
     }
-
-    /* Print some information about the hash file */
-    scan_start_time = hashfile_start_time(handle);
-    printf("Collected at [%s] on %s",
-            hashfile_sysid(handle),
-            ctime(&scan_start_time));
-
-    ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
-    if (ret < 0) {
-        fprintf(stderr, "Unrecognized chunking method: %d!", errno);
-        return -1;
-    }
-
-    printf("Chunking method: %s", buf);
-
-    ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
-    if (ret < 0) {
-        fprintf(stderr, "Unrecognized hashing method: %d!", errno);
-        return -1;
-    }
-
-    printf("Hashing method: %s\n", buf);
 
     /* Go over the files in a hashfile */
     while (1) {
@@ -272,7 +252,7 @@ static int detect_by_segment_minhash(char *hashfile_name, int enable_wl)
             strcpy(suffix, ".None");
         }
 
-        GHashTable *cursegment = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
+        GHashTable *cursegment = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free);
 
         while (1) {
             ci = hashfile_next_chunk(handle);
@@ -352,6 +332,8 @@ static int detect_by_segment_minhash(char *hashfile_name, int enable_wl)
     fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
     fprintf(stderr, "# of bins: %d\n", g_hash_table_size(minhashset));
 
+    printf("%d %d %.4f %.4f\n", collisions, detected_collisions, 1.0*chunks_read_back/total_chunks, 1.0*chunks_read_back/dup_chunks);
+
     g_hash_table_destroy(minhashset);
     return 0;
 }
@@ -368,34 +350,12 @@ static int detect_by_file_minhash(char *hashfile_name)
 
     int total_chunks = 0;
 
-    chunkset = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
+    chunkset = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free);
 
     if (!handle) {
         fprintf(stderr, "Error opening hash file: %d!", errno);
         return -1;
     }
-
-    /* Print some information about the hash file */
-    scan_start_time = hashfile_start_time(handle);
-    printf("Collected at [%s] on %s",
-            hashfile_sysid(handle),
-            ctime(&scan_start_time));
-
-    ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
-    if (ret < 0) {
-        fprintf(stderr, "Unrecognized chunking method: %d!", errno);
-        return -1;
-    }
-
-    printf("Chunking method: %s", buf);
-
-    ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
-    if (ret < 0) {
-        fprintf(stderr, "Unrecognized hashing method: %d!", errno);
-        return -1;
-    }
-
-    printf("Hashing method: %s\n", buf);
 
     /* Go over the files in a hashfile */
     while (1) {
@@ -420,7 +380,7 @@ static int detect_by_file_minhash(char *hashfile_name)
             strcpy(suffix, ".None");
         }
 
-        GHashTable *curfile = g_hash_table_new_full(g_int64_hash, hash_equal, NULL, free);
+        GHashTable *curfile = g_hash_table_new_full(g_int_hash, hash_equal, NULL, free);
 
         while (1) {
             ci = hashfile_next_chunk(handle);
@@ -472,6 +432,7 @@ static int detect_by_file_minhash(char *hashfile_name)
             chunks_read_back, 1.0*chunks_read_back/total_chunks,
             1.0*chunks_read_back/dup_chunks);
     fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
+    printf("%d %d %.4f %.4f\n", collisions, detected_collisions, 1.0*chunks_read_back/total_chunks, 1.0*chunks_read_back/dup_chunks);
     return 0;
 }
 
@@ -480,7 +441,7 @@ int main(int argc, char *argv[])
     int opt = 0;
     int segment = 0;
     int enable_wl = 0;
-    while ((opt = getopt_long(argc, argv, "s:w", NULL, NULL))
+    while ((opt = getopt_long(argc, argv, "h:s:wt:", NULL, NULL))
             != -1) {
         switch (opt) {
             case 's':
@@ -491,6 +452,12 @@ int main(int argc, char *argv[])
                 break;
             case 'w':
                 enable_wl = 1;
+                break;
+            case 'h':
+                hashlen = atoi(optarg);
+                break;
+            case 't':
+                wl_threshold = atoi(optarg);
                 break;
             default:
                 return -1;
