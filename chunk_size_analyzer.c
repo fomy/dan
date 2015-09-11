@@ -5,9 +5,43 @@
 #include <assert.h>
 #include "store.h"
 
-int get_chunksize_distribution(unsigned int lb, unsigned int rb){
+void avg_chunksize(){
     init_iterator("CHUNK");
 
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+
+    int64_t sum_nodedup = 0;
+    int64_t count_nodedup = 0;
+    int64_t sum_removed = 0;
+    int64_t count_removed = 0;
+    int64_t sum_stored = 0;
+    int64_t count_stored = 0;
+
+    while(iterate_chunk(&r, 0) == 0){
+        int64_t tmp = r.csize;
+        tmp *= r.rcount;
+        sum_nodedup += tmp;
+        count_nodedup += r.rcount;
+
+        tmp = r.csize;
+        tmp *= r.rcount - 1;
+        sum_removed += tmp;
+        count_removed += r.rcount - 1;
+
+        sum_stored += r.csize;
+        count_stored++;
+    }
+
+    close_iterator();
+
+    fprintf(stderr, "nodedup = %10.2f\n", 1.0*sum_nodedup/count_nodedup);
+    fprintf(stderr, "removed = %10.2f\n", 1.0*sum_removed/count_removed);
+    fprintf(stderr, "stored = %10.2f\n", 1.0*sum_stored/count_stored);
+}
+
+int get_chunksize_distribution(unsigned int lb, unsigned int rb){
+    init_iterator("CHUNK");
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
@@ -78,7 +112,8 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     unsigned int lb = 1, rb =-1;
-	while ((opt = getopt_long(argc, argv, "l:r:", NULL, NULL))
+    int distribution = 0;
+	while ((opt = getopt_long(argc, argv, "l:r:d", NULL, NULL))
 			!= -1) {
 		switch (opt) {
             case 'l':
@@ -87,6 +122,9 @@ int main(int argc, char *argv[])
             case 'r':
                 rb = atoi(optarg);
                 break;
+            case 'd':
+                distribution = 1;
+                break;
             default:
                 return -1;
         }
@@ -94,7 +132,10 @@ int main(int argc, char *argv[])
 
     open_database();
 
-    get_chunksize_distribution(lb, rb);
+    if(distribution)
+        get_chunksize_distribution(lb, rb);
+    else
+        avg_chunksize();
 
     close_database();
 
