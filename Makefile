@@ -12,7 +12,7 @@ MAKE = make
 all:
 	$(MAKE) collector 
 	$(MAKE) collision_detector 
-	$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter
+	$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter simd_reverse_exporter
 	$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
 	$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
@@ -53,6 +53,9 @@ file_exporter:store file_exporter.c
 simd_exporter:store simd_exporter.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c store.o data.o -o simd_exporter libhashfile.o -lglib  $(DBLIBS)
 
+simd_reverse_exporter:store simd_reverse_exporter.c libhashfile
+	$(CC) $(CFLAGS) $(INCLUDE) simd_reverse_exporter.c store.o data.o -o simd_reverse_exporter libhashfile.o -lglib  $(DBLIBS)
+
 store:store.c data.c
 	$(CC) $(CFLAGS) -c store.c -o store.o $(INCLUDE)
 	$(CC) $(CFLAGS) -c data.c -o data.o $(INCLUDE)
@@ -67,4 +70,4 @@ clean:
 	rm refs_distribution_exporter refs_locality_exporter
 	rm chunk_refs_distance_analyzer chunk_size_analyzer 
 	rm file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
-	rm simd_exporter
+	rm simd_exporter simd_reverse_exporter
