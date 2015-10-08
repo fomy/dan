@@ -20,7 +20,7 @@ static gboolean hash20_equal(gpointer a, gpointer b){
 
 /* The number of lines relies on chunksize;
  * Only chunk-level trace requires this  */
-static print_a_chunk(int chunksize, int64_t content){
+static void print_a_chunk(int chunksize, int64_t content){
     int lines_no = (chunksize+1023)/1024;
     assert(lines_no >= 1);
     assert(lines_no <= 16);
@@ -35,12 +35,34 @@ void chunk_nodedup_simd_trace(char *path, int weighted){
     if(weighted){
         fprintf(stderr, "CHUNK:NO DEDUP:WEIGHTED\n");
         printf("CHUNK:NO DEDUP:WEIGHTED\n");
+        init_iterator("CHUNK");
+
+        struct chunk_rec chunk;
+        memset(&chunk, 0, sizeof(chunk));
+
+        int64_t sum = 0;
+        int64_t count = 0;
+        /* USE part */
+        while(iterate_chunk(&chunk, 0) == 0){
+
+            int i = 0;
+            int64_t size = chunk.csize;
+            for(; i<chunk.rcount; i++){
+                int lines_no = (chunk.csize+1023)/1024;
+                sum += size*lines_no;
+                count += lines_no;
+            }
+        }
+
+        fprintf(stderr, "%.6f\n", 1.0*sum/count);
+
+        close_iterator();
     }else{
         fprintf(stderr, "CHUNK:NO DEDUP:NOT WEIGHTED\n");
         printf("CHUNK:NO DEDUP:NOT WEIGHTED\n");
     }
 
-    fprintf(stderr, "Not trace for this model; only for test\n");
+    fprintf(stderr, "No trace for this model; only for test\n");
 }
 
 /*  
@@ -66,6 +88,8 @@ void chunk_dedup_simd_trace(char *path, int weighted){
     int64_t lsize = 0;
     int64_t total_chunks = 0;
     /* USE part */
+    int64_t sum4mean = 0;
+    int64_t count4mean = 0;
     while(iterate_chunk(&chunk, 0) == 0){
 
         int64_t sum = chunk.csize;
@@ -76,14 +100,20 @@ void chunk_dedup_simd_trace(char *path, int weighted){
 
         total_chunks += chunk.rcount;
 
-        if(weighted)
+        if(weighted){
+            sum4mean += sum * chunk.csize;
+            count4mean += chunk.csize;
             print_a_chunk(chunk.csize, sum);
-        else
+        }else{
+            sum4mean += sum; 
+            count4mean += chunk.csize;
             print_a_chunk(chunk.csize, chunk.rcount);
+        }
     }
 
     printf("%.6f\n", 1.0*lsize/psize);
     fprintf(stderr, "D/F = %.4f, total_chunks = %"PRId64"\n", 1.0*lsize/psize, total_chunks);
+    fprintf(stderr, "mean = %.4f, per DF = %.6f\n", 1.0*sum4mean/count4mean, 1.0*sum4mean*psize/count4mean/lsize);
 
     close_iterator();
 
@@ -268,9 +298,9 @@ void file_nodedup_simd_trace(char *path, int weighted){
         }
 
         /*if(filesize != hashfile_curfile_size(handle))*/
-            /*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+        /*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
         /*else*/
-            /*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+        /*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
         if(filesize == 0)
             continue;
 

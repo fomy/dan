@@ -22,7 +22,7 @@ static gboolean hash20_equal(gpointer a, gpointer b){
 
 /* The number of lines relies on chunksize;
  * Only chunk-level trace requires this  */
-static print_a_chunk(int chunksize, int64_t content){
+static void print_a_chunk(int chunksize, int64_t content){
     int lines_no = (chunksize+1023)/1024;
     assert(lines_no >= 1);
     assert(lines_no <= 16);
@@ -91,6 +91,7 @@ void reverse_trace(char *path, char* reverse_file){
         exit(-1);
     }
 
+    fprintf(stderr, "hashlen = %d\n", hashlen);
     write(fd, &hashlen, sizeof(hashlen));
     char* nexthash = NULL;
 
@@ -222,8 +223,8 @@ void file_dedup_simd_trace(char* path, int weighted){
     memset(&fr, 0, sizeof(fr));
 
     /* USE part */
-    int64_t psize = 0;
     int64_t lsize = 0;
+    int64_t psize = 0;
     while(iterate_chunk(&chunk, 0) == 0){
 
         int64_t sum = chunk.csize;
@@ -276,8 +277,10 @@ void file_dedup_simd_trace(char* path, int weighted){
     int byte = read(fd, &chunk.hashlen, 4);
     assert(byte == 4);
 
-    byte = read(fd, chunk.hash, chunk.hashlen);
-    while (byte > 0) {
+    while(1){
+        byte = read(fd, chunk.hash, chunk.hashlen);
+        if(byte != chunk.hashlen)
+            break;
 
         /* restore a chunk */
         assert(search_chunk(&chunk));
@@ -320,7 +323,6 @@ void file_dedup_simd_trace(char* path, int weighted){
             }
             step++;
         }
-        byte = read(fd, chunk.hash, chunk.hashlen);
         assert(restore_file_bytes <= lsize);
     }
 

@@ -177,7 +177,7 @@ static void check_cursegment(GHashTable* cursegment, int enable_wl){
             }
 
             int read_back = 0;
-            if(memcmp(target->minhash, minhash, 20) != 0){
+            /*if(memcmp(target->minhash, minhash, 20) != 0){*/
                 read_back = 1;
                 int *sc = g_hash_table_lookup(whitelist, &target->sid);
                 assert(sc);
@@ -185,7 +185,7 @@ static void check_cursegment(GHashTable* cursegment, int enable_wl){
                 if(enable_wl && sc[1] > wl_threshold){
                     read_back = 0;
                 }
-            } 
+            /*} */
 
             if(read_back){
                 chunks_read_back++;
@@ -332,7 +332,7 @@ static int detect_by_segment_minhash(char *hashfile_name, int enable_wl)
     fprintf(stderr, "# of hash collisions: %d; %d detected\n", collisions, detected_collisions);
     fprintf(stderr, "# of bins: %d\n", g_hash_table_size(minhashset));
 
-    printf("%d %d %.4f %.4f\n", collisions, detected_collisions, 1.0*chunks_read_back/total_chunks, 1.0*chunks_read_back/dup_chunks);
+    printf("%d\n%d\n%.4f\n%.4f\n", collisions, detected_collisions, 1.0*chunks_read_back/total_chunks, 1.0*chunks_read_back/dup_chunks);
 
     g_hash_table_destroy(minhashset);
     return 0;
