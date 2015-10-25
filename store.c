@@ -242,7 +242,8 @@ void reference_chunk(struct chunk_rec *r, int fid)
 	cached_chunk->rcount++;
 	if (cached_chunk->listsize < cached_chunk->rcount) {
 		cached_chunk->listsize = cached_chunk->rcount;
-		cached_chunk->list = realloc(cached_chunk->list, cached_chunk->listsize);
+		cached_chunk->list = realloc(cached_chunk->list, 
+				sizeof(int) * cached_chunk->listsize);
 	}
 	cached_chunk->list[cached_chunk->rcount + 1] = fid;
 }
