@@ -24,7 +24,7 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value)
 {
 
 	value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
-		sizeof(r->csize) + sizeof(r->cratio) + 2 * r->rcount * sizeof(int);
+		sizeof(r->csize) + sizeof(r->cratio) + r->rcount * sizeof(int);
 
 	value->data = malloc(value->size);
 
@@ -133,7 +133,7 @@ void open_database(char *db_home)
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
-	ret = chunk_dbp->open(chunk_dbp, NULL, "file.db", NULL, DB_HASH, 
+	ret = file_dbp->open(file_dbp, NULL, "file.db", NULL, DB_HASH, 
 			DB_CREATE, 0);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));

@@ -68,6 +68,8 @@ static int read_hashfile(char *hashfile_name)
 
     struct chunk_rec chunk;
     memset(&chunk, 0, sizeof(chunk));
+	chunk.listsize = 1;
+	chunk.list = malloc(sizeof(int) * chunk.listsize);
     struct container_rec container;
     memset(&container, 0, sizeof(container));
     struct region_rec region;
@@ -191,6 +193,9 @@ static int read_hashfile(char *hashfile_name)
 
                 chunk.rid = region.rid;
                 chunk.cid = container.cid;
+
+				chunk.rcount = 1;
+				chunk.list[0] = file.fid;
 
             	insert_chunk(&chunk);
 
