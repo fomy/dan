@@ -116,6 +116,8 @@ void open_database(char *db_home)
 		exit(-1);
 	}
 
+	db_envp->set_cachesize(db_envp, 0, 500*1024*1024, 0);
+
 	ret = db_create(&chunk_dbp, db_envp, 0);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
