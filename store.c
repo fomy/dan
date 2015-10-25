@@ -155,7 +155,7 @@ void close_database()
 		free_lru_cache(file_cache, NULL);
 	}
 
-	print_store_stat();
+	/*print_store_stat();*/
 
 	chunk_dbp->close(chunk_dbp, 0);
 	file_dbp->close(file_dbp, 0);
@@ -440,7 +440,7 @@ int iterate_file(struct file_rec* r)
 int get_file_number()
 {
 	DB_HASH_STAT hs;
-	int ret = file_dbp->stat(file_dbp, NULL, &hs, DB_FAST_STAT);
+	int ret = file_dbp->stat(file_dbp, NULL, &hs, DB_READ_COMMITTED);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
@@ -451,7 +451,7 @@ int get_file_number()
 int get_chunk_number()
 {
 	DB_HASH_STAT hs;
-	int ret = chunk_dbp->stat(chunk_dbp, NULL, &hs, DB_FAST_STAT);
+	int ret = chunk_dbp->stat(chunk_dbp, NULL, &hs, DB_READ_COMMITTED);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
