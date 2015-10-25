@@ -462,5 +462,5 @@ int get_chunk_number()
 void print_store_stat()
 {
 	int ret = chunk_dbp->stat_print(chunk_dbp, DB_FAST_ALL);
-	ret = file_dbp->stat_print(file_dbp, DB_FAST_STAT);
+	ret = file_dbp->stat_print(file_dbp, DB_STAT_ALL);
 }
