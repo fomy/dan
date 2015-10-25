@@ -188,6 +188,9 @@ int search_chunk(struct chunk_rec *r)
 
 		if (ret == DB_NOTFOUND) {
 			return STORE_NOTFOUND;
+		} else if (ret != 0) {
+			fprintf(stderr, "%s\n", db_strerror(ret));
+			exit(-1);
 		}
 
 		cached_chunk = malloc(sizeof(*cached_chunk));
@@ -410,7 +413,8 @@ int iterate_chunk(struct chunk_rec* r)
 	return ITER_CONTINUE;
 }
 
-int iterate_file(struct file_rec* r){
+int iterate_file(struct file_rec* r)
+{
 
 	DBT key, value;
 	memset(&key, 0, sizeof(DBT));
@@ -429,4 +433,26 @@ int iterate_file(struct file_rec* r){
 	unserial_file_rec(&value, r);
 
 	return ITER_CONTINUE;
+}
+
+int get_file_number()
+{
+	DB_HASH_STAT hs;
+	int ret = file_dbp->stat(file_dbp, NULL, &hs, DB_FAST_STAT);
+	if (ret != 0) {
+		fprintf(stderr, "%s\n", db_strerror(ret));
+		exit(-1);
+	}
+	return hs.hash_nkeys;
+}
+
+int get_chunk_number()
+{
+	DB_HASH_STAT hs;
+	int ret = chunk_dbp->stat(chunk_dbp, NULL, &hs, DB_FAST_STAT);
+	if (ret != 0) {
+		fprintf(stderr, "%s\n", db_strerror(ret));
+		exit(-1);
+	}
+	return hs.hash_nkeys;
 }

@@ -88,6 +88,8 @@ static int read_hashfile(char *hashfile_name)
 
     int dup_count = 0;
 
+	file_count = get_file_number();
+
     handle = hashfile_open(hashfile_name);
 
     if (!handle) {
