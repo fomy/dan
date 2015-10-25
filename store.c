@@ -155,6 +155,8 @@ void close_database()
 		free_lru_cache(file_cache, NULL);
 	}
 
+	print_store_stat();
+
 	chunk_dbp->close(chunk_dbp, 0);
 	file_dbp->close(file_dbp, 0);
 
@@ -459,6 +461,6 @@ int get_chunk_number()
 
 void print_store_stat()
 {
-	int ret = chunk_dbp->stat_print(chunk_dbp, DB_FAST_STAT);
+	int ret = chunk_dbp->stat_print(chunk_dbp, DB_FAST_ALL);
 	ret = file_dbp->stat_print(file_dbp, DB_FAST_STAT);
 }
