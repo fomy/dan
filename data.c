@@ -41,8 +41,8 @@ void copy_chunk_rec(struct chunk_rec *r, struct chunk_rec *copy)
 		copy->list = realloc(copy->list, sizeof(int) * copy->rcount);
 		copy->listsize = copy->rcount;
 	}
-	memset(copy->list, 0, copy->listsize);
-	memcpy(copy->list, r->list, r->rcount);
+	memset(copy->list, 0, sizeof(int) * copy->listsize);
+	memcpy(copy->list, r->list, sizeof(int) * r->rcount);
 }
 
 void reset_container_rec(struct container_rec *r)

@@ -238,6 +238,7 @@ void insert_chunk(struct chunk_rec *r)
 void reference_chunk(struct chunk_rec *r, int fid)
 {
 	assert(cached_chunk != NULL);
+	assert(memcmp(cached_chunk->hash, r->hash, r->hashlen) == 0);
 
 	cached_chunk->rcount++;
 	if (cached_chunk->listsize < cached_chunk->rcount) {
@@ -245,7 +246,7 @@ void reference_chunk(struct chunk_rec *r, int fid)
 		cached_chunk->list = realloc(cached_chunk->list, 
 				sizeof(int) * cached_chunk->listsize);
 	}
-	cached_chunk->list[cached_chunk->rcount] = fid;
+	cached_chunk->list[cached_chunk->rcount - 1] = fid;
 }
 
 static void serial_file_rec(struct file_rec *r, DBT *value)
