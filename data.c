@@ -33,16 +33,16 @@ void copy_chunk_rec(struct chunk_rec *r, struct chunk_rec *copy)
 	copy->csize = r->csize;
 	copy->cratio = r->cratio;
 
-	if(copy->list == NULL) {
-		copy->list = malloc(sizeof(int) * copy->rcount * 2);
-		copy->listsize = copy->rcount * 2;
-	} else if (copy->listsize > copy->rcount * 4 
-			|| copy->listsize < copy->rcount * 2) {
-		copy->list = realloc(copy->list, sizeof(int) * copy->rcount * 2);
-		copy->listsize = copy->rcount * 2;
+	if (copy->list == NULL) {
+		copy->list = malloc(sizeof(int) * copy->rcount);
+		copy->listsize = copy->rcount;
+	} else if (copy->listsize > copy->rcount * 2 
+			|| copy->listsize < copy->rcount) {
+		copy->list = realloc(copy->list, sizeof(int) * copy->rcount);
+		copy->listsize = copy->rcount;
 	}
 	memset(copy->list, 0, copy->listsize);
-	memcpy(copy->list, r->list, r->rcount * 2);
+	memcpy(copy->list, r->list, r->rcount);
 }
 
 void reset_container_rec(struct container_rec *r)

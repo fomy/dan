@@ -55,8 +55,8 @@ collector:store collector.c libhashfile
 	#$(CC) $(CFLAGS) $(INCLUDE) simd_reverse_exporter.c store.o data.o -o simd_reverse_exporter libhashfile.o -lglib  $(DBLIBS)
 
 store:store.c data.c lru_cache.c
-	$(CC) $(CFLAGS) -c store.c
-	$(CC) $(CFLAGS) -c data.c -I /usr/local/BerkeleyDB.6.1/include/
+	$(CC) $(CFLAGS) -c store.c -I /usr/local/BerkeleyDB.6.1/include/
+	$(CC) $(CFLAGS) -c data.c
 	$(CC) $(CFLAGS) -c lru_cache.c
 
 libhashfile:libhashfile.c
