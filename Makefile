@@ -14,7 +14,7 @@ all:
 	#$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
 	#$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
-collector:libstore.so collector.c libhashfile
+collector:store collector.c libhashfile
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector libhashfile.o -L/usr/local/opt/openssl/lib -lcrypto -L . -lstore -I/usr/local/opt/openssl/include
 
 #collision_detector:collision_detector.c libhashfile store
