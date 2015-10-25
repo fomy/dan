@@ -76,7 +76,7 @@ void free_lru_cache(struct lru_cache* c,
 
 	struct lru_elem *next = c->head->next;
 	while (c->head) {
-		free_lru_elem(c->head);
+		free_lru_elem(c, c->head);
 		c->head = next;
 	}
 
