@@ -17,6 +17,8 @@ static void free_lru_elem(struct lru_cache *cache, struct lru_elem *elem) {
 	if (cache->value_free)
 		cache->value_free(elem->data);
 
+	elem->next = NULL;
+	elem->prev = NULL;
 	free(elem);
 }
 
@@ -62,12 +64,15 @@ void free_lru_cache(struct lru_cache* c,
 			c->miss_count + c->hit_count, 
 			1.0*c->hit_count/(c->hit_count+c->miss_count));
 
-	struct lru_elem *next = c->head->next;
+	struct lru_elem *next;
 	while (c->head) {
+		next = c->head->next;
+
 		/* before free them, flush them to disks */
 		if (victim_handler)
 			victim_handler(c->head->data);
 		free_lru_elem(c, c->head);
+
 		c->head = next;
 	}
 
@@ -123,9 +128,9 @@ void lru_cache_insert(struct lru_cache *c, void *key, void *value,
 
 		if (victim_handler) {
 			victim_handler(elem->data);
-			if (c->key_free) c->key_free(elem->key);
-			if (c->value_free) c->value_free(elem->data);
 		}
+		if (c->key_free) c->key_free(elem->key);
+		if (c->value_free) c->value_free(elem->data);
 
 		g_hash_table_remove(c->index, elem->key);
 		c->size--;
