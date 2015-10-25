@@ -11,6 +11,15 @@
 #include <assert.h>
 #include "lru_cache.h"
 
+static void free_lru_elem(struct lru_cache *cache, struct lru_elem *elem) {
+	if (cache->key_free) 
+		cache->key_free(elem->key);
+	if (cache->value_free)
+		cache->value_free(elem->data);
+
+	free(elem);
+}
+
 /*
  * The container read cache.
  */
@@ -40,8 +49,7 @@ struct lru_cache* new_lru_cache(int cache_size,
 
 	c->head = NULL;
 	c->tail = NULL;
-	c->index = g_hash_table_new_full(c->key_hash, c->key_equal, c->key_free,
-			c->value_free);
+	c->index = g_hash_table_new(c->key_hash, c->key_equal);
 
 	return c;
 }
@@ -61,13 +69,14 @@ void free_lru_cache(struct lru_cache* c,
 	if (victim_handler) {
 		g_hash_table_iter_init(&iter, c->index);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			victim_handler(value);
+			struct lru_elem *elem = value;
+			victim_handler(elem->data);
 		}
 	}
 
 	struct lru_elem *next = c->head->next;
 	while (c->head) {
-		free(c->head);
+		free_lru_elem(c->head);
 		c->head = next;
 	}
 
@@ -121,8 +130,11 @@ void lru_cache_insert(struct lru_cache *c, void *key, void *value,
 		c->tail = elem->prev;
 		elem->prev->next = NULL;
 
-		if (victim_handler)
+		if (victim_handler) {
 			victim_handler(elem->data);
+			if (c->key_free) c->key_free(elem->key);
+			if (c->value_free) c->value_free(elem->data);
+		}
 
 		g_hash_table_remove(c->index, elem->key);
 		c->size--;
