@@ -245,7 +245,7 @@ void reference_chunk(struct chunk_rec *r, int fid)
 		cached_chunk->list = realloc(cached_chunk->list, 
 				sizeof(int) * cached_chunk->listsize);
 	}
-	cached_chunk->list[cached_chunk->rcount + 1] = fid;
+	cached_chunk->list[cached_chunk->rcount] = fid;
 }
 
 static void serial_file_rec(struct file_rec *r, DBT *value)
