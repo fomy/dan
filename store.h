@@ -26,4 +26,6 @@ void close_iterator(char *type);
 int iterate_chunk(struct chunk_rec* r);
 int iterate_file(struct file_rec* r);
 
+void print_store_stat();
+
 #endif

@@ -456,3 +456,9 @@ int get_chunk_number()
 	}
 	return hs.hash_nkeys;
 }
+
+void print_store_stat()
+{
+	int ret = chunk_dbp->stat_print(chunk_dbp, DB_FAST_STAT);
+	ret = file_dbp->stat_print(file_dbp, DB_FAST_STAT);
+}

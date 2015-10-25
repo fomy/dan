@@ -274,10 +274,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-
     open_database("dbhome/");
 
     int ret = read_hashfile(argv[1]);
+
+	print_store_stat();
 
     close_database();
 
