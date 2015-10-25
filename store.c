@@ -439,24 +439,28 @@ int iterate_file(struct file_rec* r)
 
 int get_file_number()
 {
-	DB_HASH_STAT hs;
+	DB_HASH_STAT *hs;
 	int ret = file_dbp->stat(file_dbp, NULL, &hs, DB_READ_COMMITTED);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
-	return hs.hash_nkeys;
+	int nkeys = hs->hash_nkeys;
+	free(hs);
+	return nkeys;
 }
 
 int get_chunk_number()
 {
-	DB_HASH_STAT hs;
+	DB_HASH_STAT *hs;
 	int ret = chunk_dbp->stat(chunk_dbp, NULL, &hs, DB_READ_COMMITTED);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
-	return hs.hash_nkeys;
+	int nkeys = hs->hash_nkeys;
+	free(hs);
+	return nkeys;
 }
 
 void print_store_stat()
