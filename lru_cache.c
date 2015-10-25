@@ -62,20 +62,11 @@ void free_lru_cache(struct lru_cache* c,
 			c->miss_count + c->hit_count, 
 			1.0*c->hit_count/(c->hit_count+c->miss_count));
 
-	/* before free them, flush them to disks */
-	GHashTableIter iter;
-	gpointer key, value;
-
-	if (victim_handler) {
-		g_hash_table_iter_init(&iter, c->index);
-		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			struct lru_elem *elem = value;
-			victim_handler(elem->data);
-		}
-	}
-
 	struct lru_elem *next = c->head->next;
 	while (c->head) {
+		/* before free them, flush them to disks */
+		if (victim_handler)
+			victim_handler(c->head->data);
 		free_lru_elem(c, c->head);
 		c->head = next;
 	}
