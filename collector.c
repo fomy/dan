@@ -67,9 +67,7 @@ static int read_hashfile(char *hashfile_name)
     int ret;
 
     struct chunk_rec chunk;
-    int list[2];
     memset(&chunk, 0, sizeof(chunk));
-    chunk.list = list;
     struct container_rec container;
     memset(&container, 0, sizeof(container));
     struct region_rec region;
@@ -139,7 +137,8 @@ static int read_hashfile(char *hashfile_name)
         char* fname = parse_file_name(hashfile_curfile_path(handle));
         file.fname = malloc(strlen(fname)+1);
         strcpy(file.fname, fname);
-        printf("%d:%s, %"PRIu64"\n", file.fid, file.fname, hashfile_curfile_size(handle));
+        printf("%d:%s, %"PRIu64"\n", 
+				file.fid, file.fname, hashfile_curfile_size(handle));
 
         MD5_CTX ctx;
         MD5_Init(&ctx); 
@@ -153,7 +152,8 @@ static int read_hashfile(char *hashfile_name)
             int chunksize = ci->size;
             memcpy(chunk.hash, ci->hash, hashsize);
             memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-            chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+            chunk.hashlen = 20;
+            /*chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);*/
 
             MD5_Update(&ctx, chunk.hash, chunk.hashlen);
 
@@ -165,8 +165,8 @@ static int read_hashfile(char *hashfile_name)
                 memcpy(file.maxhash, chunk.hash, chunk.hashlen);
             }
 
-            ret = search_chunk_local(&chunk);
-            if(ret == 0){
+            ret = search_chunk(&chunk);
+            if(ret == STORE_NOTFOUND){
                 /* A unique chunk */
                 chunk.csize = ci->size;
                 chunk.cratio = ci->cratio;
@@ -192,7 +192,9 @@ static int read_hashfile(char *hashfile_name)
                 chunk.rid = region.rid;
                 chunk.cid = container.cid;
 
-            }else if(ret == 1){
+            	insert_chunk(&chunk);
+
+            }else if(ret == STORE_EXISTED){
                 /* A duplicate chunk */
                 /*printf("duplicate, %d\n", chunk.csize);*/
                 dup_count++;
@@ -204,15 +206,12 @@ static int read_hashfile(char *hashfile_name)
                     /*assert(chunk.csize == ci->size);*/
                 }
                 /*assert(chunk.cratio == ci->cratio);*/
+            	reference_chunk(&chunk, file.fid);
             }else{
                 exit(2);
             }
             syssize += chunk.csize;
 
-            chunk.list[0] = chunk_count;
-            chunk.list[1] = file_count;
-
-            update_chunk(&chunk);
 
             /* update file info */
             file.cnum++;
@@ -227,7 +226,7 @@ static int read_hashfile(char *hashfile_name)
             printf("%"PRId64" != %"PRIu64"\n", file.fsize, hashfile_curfile_size(handle));
         /* file end; update it */
         if(file.fsize > 0){
-            update_file(&file);
+            insert_file(&file);
             file_count++;
             /*assert(hashfile_curfile_size(handle) == file.fsize);*/
         }else{
@@ -239,8 +238,10 @@ static int read_hashfile(char *hashfile_name)
 
     hashfile_close(handle);
 
-    printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f, %.5f\n", 1.0*syssize/1024/1024/1024, 
-            1.0*dupsize/1024/1024/1024, 1.0*dupsize/syssize, 1.0*syssize/(syssize-dupsize));
+    printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f, %.5f\n", 
+			1.0*syssize/1024/1024/1024, 
+            1.0*dupsize/1024/1024/1024, 
+			1.0*dupsize/syssize, 1.0*syssize/(syssize-dupsize));
     printf("%d duplicate chunks out of %d\n", dup_count, chunk_count);
     printf("%d files, excluding %d empty files\n", file_count, empty_files);
     return 0;
@@ -267,7 +268,7 @@ int main(int argc, char *argv[])
     }
 
 
-    create_database();
+    open_database("dbhome/");
 
     int ret = read_hashfile(argv[1]);
 

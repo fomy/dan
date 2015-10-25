@@ -3,8 +3,13 @@
 
 #include "data.h"
 
-void create_database();
-void open_database();
+#define STORE_EXISTED 0
+#define STORE_NOTFOUND 1
+
+#define ITER_STOP 0
+#define ITER_CONTINUE 1
+
+void open_database(char* dbhome);
 void close_database();
 
 int search_chunk(struct chunk_rec *r);
@@ -13,12 +18,12 @@ void update_chunk(struct chunk_rec *r);
 int64_t get_chunk_number();
 
 int search_file(struct file_rec* r);
-void update_file(struct file_rec* r);
+void insert_file(struct file_rec* r);
 int64_t get_file_number();
 
 void init_iterator(char *type);
-void close_iterator();
-int iterate_chunk(struct chunk_rec* r, int dedup_fid);
+void close_iterator(char *type);
+int iterate_chunk(struct chunk_rec* r);
 int iterate_file(struct file_rec* r);
 
 #endif
