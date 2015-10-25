@@ -33,7 +33,7 @@ struct lru_cache* new_lru_cache(int cache_size,
 	c->key_hash = key_hash;
 	c->key_equal = key_equal;
 
-	assert(c->key_free != NULL);
+	/*assert(c->key_free != NULL);*/
 	assert(c->value_free != NULL);
 	assert(c->key_hash != NULL);
 	assert(c->key_equal != NULL);
