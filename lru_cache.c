@@ -137,7 +137,10 @@ void lru_cache_insert(struct lru_cache *c, void *key, void *value,
 
 	elem->next = c->head;
 	elem->prev = NULL;
-	c->head->prev = elem;
+	if (c->head)
+		c->head->prev = elem;
+	else
+		c->tail = elem;
 	c->head = elem;
 
 	g_hash_table_insert(c->index, key, elem);

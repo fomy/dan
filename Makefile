@@ -15,7 +15,7 @@ all:
 	#$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
 collector:store collector.c libhashfile
-	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector libhashfile.o -L/usr/local/opt/openssl/lib -lcrypto -L . -lstore -I/usr/local/opt/openssl/include
+	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector libhashfile.o store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 #collision_detector:collision_detector.c libhashfile store
 	#$(CC) $(CFLAGS) $(INCLUDE) collision_detector.c -o collision_detector data.o libhashfile.o -lglib
@@ -55,7 +55,9 @@ collector:store collector.c libhashfile
 	#$(CC) $(CFLAGS) $(INCLUDE) simd_reverse_exporter.c store.o data.o -o simd_reverse_exporter libhashfile.o -lglib  $(DBLIBS)
 
 store:store.c data.c lru_cache.c
-	$(CC) -fPIC -shared store.c lru_cache.c data.c -o libstore.so -I /usr/local/include -I /usr/local/BerkeleyDB.6.1/include/ -L /usr/local/BerkeleyDB.6.1/lib/ -ldb -L /usr/local/lib/ -lglib
+	$(CC) $(CFLAGS) -c store.c
+	$(CC) $(CFLAGS) -c data.c -I /usr/local/BerkeleyDB.6.1/include/
+	$(CC) $(CFLAGS) -c lru_cache.c
 
 libhashfile:libhashfile.c
 	$(CC) $(CFLAGS) -c libhashfile.c
