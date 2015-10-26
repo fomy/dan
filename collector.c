@@ -63,7 +63,6 @@ static int read_hashfile(char *argv[], int argc)
 	char buf[MAXLINE];
 	struct hashfile_handle *handle;
 	const struct chunk_info *ci;
-	time_t scan_start_time;
 	int ret;
 
 	struct chunk_rec chunk;
@@ -84,7 +83,7 @@ static int read_hashfile(char *argv[], int argc)
 	int chunk_count = 0;
 	int container_count = 0;
 	int region_count = 0;
-	int file_count = 0;
+	int file_count = 0; /* excluding empty files */
 	int empty_files = 0;
 
 	int dup_count = 0;
@@ -92,7 +91,7 @@ static int read_hashfile(char *argv[], int argc)
 	file_count = get_file_number();
 
 	int i = 0;
-	for (; i<argc; i++){
+	for (; i<argc; i++) {
 		char *hashfile_name = argv[i];
 		handle = hashfile_open(hashfile_name);
 
@@ -100,28 +99,6 @@ static int read_hashfile(char *argv[], int argc)
 			fprintf(stderr, "Error opening hash file: %d!", errno);
 			return -1;
 		}
-
-		/* Print some information about the hash file */
-		scan_start_time = hashfile_start_time(handle);
-		printf("Collected at [%s] on %s",
-				hashfile_sysid(handle),
-				ctime(&scan_start_time));
-
-		ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
-		if (ret < 0) {
-			fprintf(stderr, "Unrecognized chunking method: %d!", errno);
-			return -1;
-		}
-
-		printf("Chunking method: %s", buf);
-
-		ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
-		if (ret < 0) {
-			fprintf(stderr, "Unrecognized hashing method: %d!", errno);
-			return -1;
-		}
-
-		printf("Hashing method: %s\n", buf);
 
 		/* Go over the files in a hashfile */
 		while (1) {

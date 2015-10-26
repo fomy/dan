@@ -126,13 +126,14 @@ void lru_cache_insert(struct lru_cache *c, void *key, void *value,
 		c->tail = elem->prev;
 		elem->prev->next = NULL;
 
-		if (victim_handler) {
+		if (victim_handler)
 			victim_handler(elem->data);
-		}
+
+		g_hash_table_remove(c->index, elem->key);
+
 		if (c->key_free) c->key_free(elem->key);
 		if (c->value_free) c->value_free(elem->data);
 
-		g_hash_table_remove(c->index, elem->key);
 		c->size--;
 	} else {
 		elem = malloc(sizeof(*elem));
