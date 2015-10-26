@@ -24,7 +24,7 @@ struct chunk_rec {
     int csize;
     /* compression ratio for each chunk */
     float cratio;
-	/* number of items is defined by rcount, equivalent to rcount * 2 */
+	/* number of items is defined by rcount, equivalent to rcount */
     int *list;
 	int listsize;
 };

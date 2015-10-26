@@ -58,7 +58,7 @@ static char* parse_file_name(char *path){
 	return &path[i+1];
 }
 
-static int read_hashfile(char *hashfile_name)
+static int read_hashfile(char *argv[], int argc)
 {
 	char buf[MAXLINE];
 	struct hashfile_handle *handle;
@@ -75,6 +75,7 @@ static int read_hashfile(char *hashfile_name)
 	struct region_rec region;
 	memset(&region, 0, sizeof(region));
 	struct file_rec file;
+
 	int64_t syssize = 0;
 	int64_t dupsize = 0;
 
@@ -90,160 +91,164 @@ static int read_hashfile(char *hashfile_name)
 
 	file_count = get_file_number();
 
-	handle = hashfile_open(hashfile_name);
+	int i = 0;
+	for (; i<argc; i++){
+		char *hashfile_name = argv[i];
+		handle = hashfile_open(hashfile_name);
 
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		return -1;
-	}
-
-	/* Print some information about the hash file */
-	scan_start_time = hashfile_start_time(handle);
-	printf("Collected at [%s] on %s",
-			hashfile_sysid(handle),
-			ctime(&scan_start_time));
-
-	ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
-	if (ret < 0) {
-		fprintf(stderr, "Unrecognized chunking method: %d!", errno);
-		return -1;
-	}
-
-	printf("Chunking method: %s", buf);
-
-	ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
-	if (ret < 0) {
-		fprintf(stderr, "Unrecognized hashing method: %d!", errno);
-		return -1;
-	}
-
-	printf("Hashing method: %s\n", buf);
-
-	/* Go over the files in a hashfile */
-	while (1) {
-		ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			return -1;
 		}
 
-		/* exit the loop if it was the last file */
-		if (ret == 0)
-			break;
+		/* Print some information about the hash file */
+		scan_start_time = hashfile_start_time(handle);
+		printf("Collected at [%s] on %s",
+				hashfile_sysid(handle),
+				ctime(&scan_start_time));
 
-		/* file start */
-		memset(&file, 0, sizeof(file));
-		memset(&file.minhash, 0xff, sizeof(file.minhash));
-		file.fid = file_count;
+		ret = hashfile_chunking_method_str(handle, buf, MAXLINE);
+		if (ret < 0) {
+			fprintf(stderr, "Unrecognized chunking method: %d!", errno);
+			return -1;
+		}
 
-		char* fname = parse_file_name(hashfile_curfile_path(handle));
-		file.fname = malloc(strlen(fname)+1);
-		strcpy(file.fname, fname);
-		printf("%d:%s, %"PRIu64"\n", 
-				file.fid, file.fname, hashfile_curfile_size(handle));
+		printf("Chunking method: %s", buf);
 
-		MD5_CTX ctx;
-		MD5_Init(&ctx); 
+		ret = hashfile_hashing_method_str(handle, buf, MAXLINE);
+		if (ret < 0) {
+			fprintf(stderr, "Unrecognized hashing method: %d!", errno);
+			return -1;
+		}
 
+		printf("Hashing method: %s\n", buf);
+
+		/* Go over the files in a hashfile */
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				return -1;
+			}
+
+			/* exit the loop if it was the last file */
+			if (ret == 0)
 				break;
 
-			int hashsize = hashfile_hash_size(handle)/8;
-			int chunksize = ci->size;
-			memcpy(chunk.hash, ci->hash, hashsize);
-			memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-			chunk.hashlen = 20;
-			/*chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);*/
+			/* file start */
+			memset(&file, 0, sizeof(file));
+			memset(&file.minhash, 0xff, sizeof(file.minhash));
+			file.fid = file_count;
 
-			MD5_Update(&ctx, chunk.hash, chunk.hashlen);
+			char* fname = parse_file_name(hashfile_curfile_path(handle));
+			file.fname = malloc(strlen(fname)+1);
+			strcpy(file.fname, fname);
+			printf("%d:%s, %"PRIu64"\n", 
+					file.fid, file.fname, hashfile_curfile_size(handle));
 
-			if(memcmp(chunk.hash, file.minhash, chunk.hashlen) < 0){
-				memcpy(file.minhash, chunk.hash, chunk.hashlen);
-			}
+			MD5_CTX ctx;
+			MD5_Init(&ctx); 
 
-			if(memcmp(chunk.hash, file.maxhash, chunk.hashlen) > 0){
-				memcpy(file.maxhash, chunk.hash, chunk.hashlen);
-			}
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
 
-			ret = search_chunk(&chunk);
-			if(ret == STORE_NOTFOUND){
-				/* A unique chunk */
-				chunk.csize = ci->size;
-				chunk.cratio = ci->cratio;
+				int hashsize = hashfile_hash_size(handle)/8;
+				int chunksize = ci->size;
+				memcpy(chunk.hash, ci->hash, hashsize);
+				memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+				chunk.hashlen = 20;
+				/*chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);*/
 
-				/* TO-DO: write to the open region */
-				while(add_chunk_to_region(&chunk, &region) != 1){
-					/* the last region is full, write it to the open container */
-					add_region_to_container(&region, &container);
-					region_count++;
+				MD5_Update(&ctx, chunk.hash, chunk.hashlen);
 
-					/* open a new region */
-					reset_region_rec(&region);
-					region.rid = region_count;
+				if(memcmp(chunk.hash, file.minhash, chunk.hashlen) < 0){
+					memcpy(file.minhash, chunk.hash, chunk.hashlen);
+				}
 
-					if(container_full(&container)){
-						container_count++;
+				if(memcmp(chunk.hash, file.maxhash, chunk.hashlen) > 0){
+					memcpy(file.maxhash, chunk.hash, chunk.hashlen);
+				}
 
-						reset_container_rec(&container);
-						container.cid = container_count;
+				ret = search_chunk(&chunk);
+				if(ret == STORE_NOTFOUND){
+					/* A unique chunk */
+					chunk.csize = ci->size;
+					chunk.cratio = ci->cratio;
+
+					/* TO-DO: write to the open region */
+					while(add_chunk_to_region(&chunk, &region) != 1){
+						/* the last region is full, write it to the open container */
+						add_region_to_container(&region, &container);
+						region_count++;
+
+						/* open a new region */
+						reset_region_rec(&region);
+						region.rid = region_count;
+
+						if(container_full(&container)){
+							container_count++;
+
+							reset_container_rec(&container);
+							container.cid = container_count;
+						}
 					}
+
+					chunk.rid = region.rid;
+					chunk.cid = container.cid;
+
+					chunk.rcount = 1;
+					chunk.list[0] = file.fid;
+
+					insert_chunk(&chunk);
+
+				}else if(ret == STORE_EXISTED){
+					/* A duplicate chunk */
+					/*printf("duplicate, %d\n", chunk.csize);*/
+					dup_count++;
+					dupsize += chunk.csize;
+
+					if(chunk.csize != ci->size){
+						print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
+						printf("Hash Collision: %d to %llu\n", chunk.csize, ci->size);
+						/*assert(chunk.csize == ci->size);*/
+					}
+					/*assert(chunk.cratio == ci->cratio);*/
+					reference_chunk(&chunk, file.fid);
+				}else{
+					exit(2);
 				}
+				syssize += chunk.csize;
 
-				chunk.rid = region.rid;
-				chunk.cid = container.cid;
 
-				chunk.rcount = 1;
-				chunk.list[0] = file.fid;
+				/* update file info */
+				file.cnum++;
+				file.fsize += chunk.csize;
 
-				insert_chunk(&chunk);
-
-			}else if(ret == STORE_EXISTED){
-				/* A duplicate chunk */
-				/*printf("duplicate, %d\n", chunk.csize);*/
-				dup_count++;
-				dupsize += chunk.csize;
-
-				if(chunk.csize != ci->size){
-					print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
-					printf("Hash Collision: %d to %llu\n", chunk.csize, ci->size);
-					/*assert(chunk.csize == ci->size);*/
-				}
-				/*assert(chunk.cratio == ci->cratio);*/
-				reference_chunk(&chunk, file.fid);
-			}else{
-				exit(2);
+				chunk_count++;
 			}
-			syssize += chunk.csize;
 
+			MD5_Final(file.hash, &ctx);
 
-			/* update file info */
-			file.cnum++;
-			file.fsize += chunk.csize;
-
-			chunk_count++;
+			if(file.fsize != hashfile_curfile_size(handle))
+				printf("%"PRId64" != %"PRIu64"\n", file.fsize, hashfile_curfile_size(handle));
+			/* file end; update it */
+			if(file.fsize > 0){
+				insert_file(&file);
+				file_count++;
+				/*assert(hashfile_curfile_size(handle) == file.fsize);*/
+			}else{
+				empty_files++;
+			}
+			free(file.fname);
+			file.fname = NULL;
 		}
 
-		MD5_Final(file.hash, &ctx);
-
-		if(file.fsize != hashfile_curfile_size(handle))
-			printf("%"PRId64" != %"PRIu64"\n", file.fsize, hashfile_curfile_size(handle));
-		/* file end; update it */
-		if(file.fsize > 0){
-			insert_file(&file);
-			file_count++;
-			/*assert(hashfile_curfile_size(handle) == file.fsize);*/
-		}else{
-			empty_files++;
-		}
-		free(file.fname);
-		file.fname = NULL;
+		hashfile_close(handle);
 	}
-
-	hashfile_close(handle);
 
 	printf("%.2fGB bytes in total, eliminating %.2fGB bytes, %.5f, %.5f\n", 
 			1.0*syssize/1024/1024/1024, 
@@ -276,7 +281,7 @@ int main(int argc, char *argv[])
 
 	open_database("dbhome/");
 
-	int ret = read_hashfile(argv[1]);
+	int ret = read_hashfile(&argv[1], argc - 1);
 
 	close_database();
 
