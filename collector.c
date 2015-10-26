@@ -273,7 +273,7 @@ static char* get_env_name(char *hashfile_name){
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
+	if (argc < 2) {
 		fprintf(stderr, "Wrong usage!\n");
 		fprintf(stderr, "Usage: %s <hashfile>\n", argv[0]);
 		return -1;
