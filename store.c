@@ -296,6 +296,9 @@ static void serial_file_rec(struct file_rec *r, DBT *value)
 	memcpy(value->data + off, r->maxhash, sizeof(r->maxhash));
 	off += sizeof(r->maxhash);
 	memcpy(value->data + off, r->fname, strlen(r->fname));
+	off += strlen(r->fname);
+
+	assert(value->size == off);
 }
 
 static void unserial_file_rec(DBT *value, struct file_rec *r)

@@ -33,6 +33,7 @@ void copy_chunk_rec(struct chunk_rec *r, struct chunk_rec *copy)
 	copy->rid = r->rid;
 	copy->csize = r->csize;
 	copy->cratio = r->cratio;
+	copy->elem_num = r->elem_num;
 
 	if (copy->list == NULL) {
 		copy->listsize = copy->elem_num;
