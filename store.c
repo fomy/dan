@@ -64,6 +64,7 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r)
 	memcpy(&r->cratio, value->data + len, sizeof(r->cratio));
 	len += sizeof(r->cratio);
 	memcpy(&r->elem_num, value->data + len, sizeof(r->elem_num));
+	len += sizeof(r->elem_num);
 
 	if(r->list == NULL) {
 		r->listsize = r->elem_num;
