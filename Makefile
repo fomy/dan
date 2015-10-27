@@ -9,20 +9,22 @@ MAKE = make
 
 all:
 	$(MAKE) collector 
+	$(MAKE) chunk_size_analyzer reference_analyzer
 	#$(MAKE) collision_detector 
 	#$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter simd_reverse_exporter
 	#$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
 	#$(MAKE) file_refs_source_analyzer file_size_analyzer file_type_analyzer file_exporter
 
-collector:store collector.c libhashfile
+collector:store collector.c libhashfile store_stat.c
 	$(CC) $(CFLAGS) $(INCLUDE) collector.c -o collector libhashfile.o store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
+	$(CC) $(CFLAGS) $(INCLUDE) store_stat.c -o store_stat libhashfile.o store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 #collision_detector:collision_detector.c libhashfile store
 	#$(CC) $(CFLAGS) $(INCLUDE) collision_detector.c -o collision_detector data.o libhashfile.o -lglib
 
 # reference analyzer
-#refs_distribution_exporter:store refs_distribution_exporter.c
-	#$(CC) $(CFLAGS) $(INCLUDE) refs_distribution_exporter.c store.o data.o -o refs_distribution_exporter $(DBLIBS)
+reference_analyzer:store reference_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) reference_analyzer.c -o reference_analyzer store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 #refs_locality_exporter:store refs_locality_exporter.c libhashfile
 	#$(CC) $(CFLAGS) $(INCLUDE) refs_locality_exporter.c store.o data.o -o refs_locality_exporter libhashfile.o $(DBLIBS)
@@ -31,8 +33,8 @@ collector:store collector.c libhashfile
 #chunk_refs_distance_analyzer:store chunk_refs_distance_analyzer.c
 	#$(CC) $(CFLAGS) $(INCLUDE) chunk_refs_distance_analyzer.c store.o data.o -o chunk_refs_distance_analyzer $(DBLIBS)
 
-#chunk_size_analyzer:store chunk_size_analyzer.c
-	#$(CC) $(CFLAGS) $(INCLUDE) chunk_size_analyzer.c store.o data.o -o chunk_size_analyzer $(DBLIBS)
+chunk_size_analyzer:store chunk_size_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) chunk_size_analyzer.c -o chunk_size_analyzer store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 # file analyzer
 #file_refs_source_analyzer:store file_refs_source_analyzer.c
