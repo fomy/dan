@@ -178,6 +178,7 @@ static int read_hashfile(char *argv[], int argc)
 					chunk.cid = container.cid;
 
 					chunk.rcount = 1;
+					chunk.elem_num = 1;
 					chunk.list[0] = file.fid;
 
 					insert_chunk(&chunk);
@@ -189,8 +190,10 @@ static int read_hashfile(char *argv[], int argc)
 					dupsize += chunk.csize;
 
 					if(chunk.csize != ci->size){
-						print_chunk_hash(chunk_count, chunk.hash, hashfile_hash_size(handle)/8);
-						printf("Hash Collision: %d to %llu\n", chunk.csize, ci->size);
+						print_chunk_hash(chunk_count, chunk.hash, 
+								hashfile_hash_size(handle)/8);
+						printf("Hash Collision: %d to %llu\n", 
+								chunk.csize, ci->size);
 						/*assert(chunk.csize == ci->size);*/
 					}
 					/*assert(chunk.cratio == ci->cratio);*/

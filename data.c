@@ -12,6 +12,7 @@ void reset_chunk_rec(struct chunk_rec *r)
     r->rid = 0;
     r->csize = 0;
     r->cratio = 0;
+	r->elem_num = 0;
 }
 
 void free_chunk_rec(struct chunk_rec *r)
@@ -34,15 +35,15 @@ void copy_chunk_rec(struct chunk_rec *r, struct chunk_rec *copy)
 	copy->cratio = r->cratio;
 
 	if (copy->list == NULL) {
-		copy->list = malloc(sizeof(int) * copy->rcount);
-		copy->listsize = copy->rcount;
-	} else if (copy->listsize > copy->rcount * 2 
-			|| copy->listsize < copy->rcount) {
-		copy->list = realloc(copy->list, sizeof(int) * copy->rcount);
-		copy->listsize = copy->rcount;
+		copy->listsize = copy->elem_num;
+		copy->list = malloc(sizeof(int) * copy->listsize);
+	} else if (copy->listsize > copy->elem_num * 2 
+			|| copy->listsize < copy->elem_num) {
+		copy->listsize = copy->elem_num;
+		copy->list = realloc(copy->list, sizeof(int) * copy->listsize);
 	}
 	memset(copy->list, 0, sizeof(int) * copy->listsize);
-	memcpy(copy->list, r->list, sizeof(int) * r->rcount);
+	memcpy(copy->list, r->list, sizeof(int) * r->elem_num);
 }
 
 void reset_container_rec(struct container_rec *r)

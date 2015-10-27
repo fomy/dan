@@ -24,9 +24,13 @@ struct chunk_rec {
     int csize;
     /* compression ratio for each chunk */
     float cratio;
-	/* number of items is defined by rcount, equivalent to rcount */
+	/* list records the IDs of the files
+	 * format: 0 1 2 -10 3 4 5 6 -90 ...
+	 * -90 indicates file 6 references the chunk by 90 times
+	 * */
     int *list;
-	int listsize;
+	int listsize; /* the size of list */
+	int elem_num; /* the number of list elem */
 };
 
 /* containr record */

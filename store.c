@@ -24,7 +24,8 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value)
 {
 
 	value->size = sizeof(r->rcount) + sizeof(r->cid) + sizeof(r->rid) +
-		sizeof(r->csize) + sizeof(r->cratio) + r->rcount * sizeof(int);
+		sizeof(r->csize) + sizeof(r->cratio) + 
+		sizeof(r->elem_num) + r->elem_num * sizeof(int);
 
 	value->data = malloc(value->size);
 
@@ -39,9 +40,11 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value)
 	off += sizeof(r->csize);
 	memcpy(value->data + off, &r->cratio, sizeof(r->cratio));
 	off += sizeof(r->cratio);
+	memcpy(value->data + off, &r->elem_num, sizeof(r->elem_num));
+	off += sizeof(r->elem_num);
 
-	memcpy(value->data + off, r->list, sizeof(int) * r->rcount);
-	off += sizeof(int) * r->rcount;
+	memcpy(value->data + off, r->list, sizeof(int) * r->elem_num);
+	off += sizeof(int) * r->elem_num;
 
 	assert(off == value->size);
 }
@@ -60,16 +63,18 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r)
 	len += sizeof(r->csize);
 	memcpy(&r->cratio, value->data + len, sizeof(r->cratio));
 	len += sizeof(r->cratio);
+	memcpy(&r->elem_num, value->data + len, sizeof(r->elem_num));
+
 	if(r->list == NULL) {
-		r->list = malloc(sizeof(int) * r->rcount);
-		r->listsize = r->rcount;
-	} else if (r->listsize > r->rcount * 2 || r->listsize < r->rcount) {
-		r->list = realloc(r->list, sizeof(int) * r->rcount);
-		r->listsize = r->rcount;
+		r->listsize = r->elem_num;
+		r->list = malloc(sizeof(int) * r->listsize);
+	} else if (r->listsize > r->elem_num * 2 || r->listsize < r->elem_num) {
+		r->listsize = r->elem_num;
+		r->list = realloc(r->list, sizeof(int) * r->listsize);
 	}
 
-	memcpy(r->list, value->data + len, sizeof(int) * r->rcount);
-	len += sizeof(int) * r->rcount;
+	memcpy(r->list, value->data + len, sizeof(int) * r->elem_num);
+	len += sizeof(int) * r->elem_num;
 
 	assert(len == value->size);
 }
@@ -142,7 +147,7 @@ void open_database(char *db_home)
 		exit(-1);
 	}
 
-	chunk_cache = new_lru_cache(1000000000, g_int_hash, fingerprint_equal,
+	chunk_cache = new_lru_cache(100000000, g_int_hash, fingerprint_equal,
 			NULL, free_chunk_rec);
 	file_cache = new_lru_cache(10000, g_int_hash, g_int_equal,
 			NULL, free_file_rec);
@@ -248,12 +253,23 @@ void reference_chunk(struct chunk_rec *r, int fid)
 	assert(memcmp(cached_chunk->hash, r->hash, r->hashlen) == 0);
 
 	cached_chunk->rcount++;
-	if (cached_chunk->listsize < cached_chunk->rcount) {
-		cached_chunk->listsize = cached_chunk->rcount;
+
+	if (cached_chunk->listsize <= cached_chunk->elem_num) {
+		cached_chunk->listsize = cached_chunk->elem_num + 1;
 		cached_chunk->list = realloc(cached_chunk->list, 
 				sizeof(int) * cached_chunk->listsize);
 	}
-	cached_chunk->list[cached_chunk->rcount - 1] = fid;
+	if (fid == cached_chunk->list[cached_chunk->elem_num - 1]) {
+		cached_chunk->list[cached_chunk->elem_num] = -2;
+		cached_chunk->elem_num++;
+	} else if (cached_chunk->list[cached_chunk->elem_num - 1] < 0 &&
+			fid == cached_chunk->list[cached_chunk->elem_num -2]) {
+		cached_chunk->list[cached_chunk->elem_num - 1] -= 1;
+	} else {
+		cached_chunk->list[cached_chunk->elem_num] = fid;
+		cached_chunk->elem_num++;
+	}
+
 }
 
 static void serial_file_rec(struct file_rec *r, DBT *value)
