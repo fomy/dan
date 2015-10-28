@@ -43,7 +43,7 @@ void get_reference_per_chunk(){
         fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);
     }
 
-    close_iterator();
+    close_iterator("CHUNK");
 
 }
 
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    open_database();
+    open_database("dbhome/");
 
     if(unit == NULL || strcasecmp(unit, "CHUNK") == 0){
         get_reference_per_chunk();

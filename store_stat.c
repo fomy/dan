@@ -65,7 +65,7 @@ void print_file_stat()
 
 int main(int argc, char *argv[])
 {
-    open_database();
+    open_database("dbhome/");
 
 	print_chunk_stat();
 	print_file_stat();

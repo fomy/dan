@@ -33,7 +33,7 @@ void avg_chunksize(){
         count_stored++;
     }
 
-    close_iterator();
+    close_iterator("CHUNK");
 
     fprintf(stderr, "nodedup = %10.2f\n", 1.0*sum_nodedup/count_nodedup);
     fprintf(stderr, "removed = %10.2f\n", 1.0*sum_removed/count_removed);
@@ -103,7 +103,7 @@ int get_chunksize_distribution(unsigned int lb, unsigned int rb){
     fprintf(stderr, "HIGH = %10.2f\n", 1.0*sum_h/count_h);
     fprintf(stderr, "EH = %10.2f\n", 1.0*sum_eh/count_eh);
 
-    close_iterator();
+    close_iterator("CHUNK");
 
     return 0;
 }
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    open_database();
+    open_database("dbhome/");
 
     if(distribution)
         get_chunksize_distribution(lb, rb);
