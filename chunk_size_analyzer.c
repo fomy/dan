@@ -18,7 +18,7 @@ void avg_chunksize(){
     int64_t sum_stored = 0;
     int64_t count_stored = 0;
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r) == ITER_CONTINUE){
         int64_t tmp = r.csize;
         tmp *= r.rcount;
         sum_nodedup += tmp;
@@ -62,7 +62,7 @@ int get_chunksize_distribution(unsigned int lb, unsigned int rb){
     int count_h = 0;
     int count_eh = 0;
 
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r) == ITER_CONTINUE){
 
         sum_a += r.csize;
         count_a++;

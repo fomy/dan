@@ -19,7 +19,7 @@ void get_reference_per_chunk(){
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
-    while(iterate_chunk(&r) == 0){
+    while(iterate_chunk(&r) == ITER_CONTINUE) {
         fprintf(stdout, "%d\n", r.rcount);
         count++;
         if(r.rcount > max){

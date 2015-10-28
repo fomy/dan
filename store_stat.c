@@ -20,7 +20,7 @@ void print_chunk_stat()
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
-    while (iterate_chunk(&r) == 0) {
+    while (iterate_chunk(&r) == ITER_CONTINUE) {
 		physical_size += r.csize;
 		physical_chunk_num++;
 
@@ -52,7 +52,7 @@ void print_file_stat()
 
 	struct file_rec r;
 	memset(&r, 0, sizeof(r));
-	while (iterate_file(&r) == 0) {
+	while (iterate_file(&r) == ITER_CONTINUE) {
 		file_num++;
 		logical_size += r.fsize;
 	}
