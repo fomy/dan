@@ -63,48 +63,6 @@ void print_file_stat()
     close_iterator("FILE");
 }
 
-void get_reference_per_chunk(){
-    init_iterator("CHUNK");
-
-	/* for the most popular chunk */
-    int max = 1;
-    int csize = 0;
-    char maxhash[20];
-
-    int count = 0;
-    int stat[10];
-    memset(stat, 0, sizeof(stat));
-
-    struct chunk_rec r;
-    memset(&r, 0, sizeof(r));
-    while(iterate_chunk(&r) == 0){
-        fprintf(stdout, "%d\n", r.rcount);
-        count++;
-        if(r.rcount > max){
-            max = r.rcount;
-            csize = r.csize;
-            memcpy(maxhash, r.hash, 20);
-        }
-        if(r.rcount > 10){
-            stat[9]++;
-        }else
-            stat[r.rcount-1]++;
-    }
-
-    fprintf(stderr, "the most popular chunk:\n");
-    fprintf(stderr, "max = %d, size = %d\n", max, csize);
-    fprintf(stderr, "hash = %.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx\n", 
-			maxhash[0], maxhash[1], maxhash[2], maxhash[3], maxhash[4], maxhash[5]);
-
-    int i = 0;
-    for(;i<10;i++){
-        fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);
-    }
-
-    close_iterator();
-
-}
-
 int main(int argc, char *argv[])
 {
     open_database();
