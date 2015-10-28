@@ -3,6 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <assert.h>
+#include <inttypes.h>
 #include "store.h"
 
 /* output deduplication ratio */
@@ -39,7 +40,7 @@ void print_chunk_stat()
 	fprintf(stderr, "logical chunk number = %"Prid64", physical chunk number = %"PRId64"\n",
 			logical_chunk_num, physical_chunk_num);
 
-    close_iterator();
+    close_iterator("CHUNK");
 }
 
 void print_file_stat()
@@ -59,7 +60,7 @@ void print_file_stat()
 	fprintf(stderr, "file number = %"PRId64"\n", file_num);
 	fprintf(stderr, "logical size = %"PRId64"\n", logical_size);
 
-    close_iterator();
+    close_iterator("FILE");
 }
 
 void get_reference_per_chunk(){
