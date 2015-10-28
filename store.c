@@ -384,12 +384,17 @@ void insert_file(struct file_rec *r)
 
 void init_iterator(char *type)
 {
+	int ret;
 	if (strcasecmp(type, "CHUNK") == 0) {
-		chunk_dbp->cursor(chunk_dbp, NULL, &chunk_cursorp, 0);
+		ret = chunk_dbp->cursor(chunk_dbp, NULL, &chunk_cursorp, 0);
 	} else if (strcasecmp(type, "FILE") == 0) {
-		file_dbp->cursor(file_dbp, NULL, &file_cursorp, 0);
+		ret = file_dbp->cursor(file_dbp, NULL, &file_cursorp, 0);
 	} else {
 		fprintf(stderr, "invalid iterator!\n");
+		exit(-1);
+	}
+	if (ret != 0) {
+		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
 }
@@ -424,7 +429,7 @@ int iterate_chunk(struct chunk_rec* r)
 	if (ret == DB_NOTFOUND) {
 		/* no more data */
 		return ITER_STOP;
-	} else {
+	} else if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
@@ -449,7 +454,7 @@ int iterate_file(struct file_rec* r)
 	if (ret == DB_NOTFOUND) {
 		/* no more data */
 		return ITER_STOP;
-	} else {
+	} else if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
 	}
