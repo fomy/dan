@@ -37,7 +37,7 @@ void print_chunk_stat()
 			1.0 * (logical_size - physical_size) / logical_size, 
 			1.0 * logical_size / physical_size);
 
-	fprintf(stderr, "logical chunk number = %"Prid64", physical chunk number = %"PRId64"\n",
+	fprintf(stderr, "logical chunk number = %"PRId64", physical chunk number = %"PRId64"\n",
 			logical_chunk_num, physical_chunk_num);
 
     close_iterator("CHUNK");
