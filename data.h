@@ -24,6 +24,13 @@ struct chunk_rec {
     int csize;
     /* compression ratio for each chunk */
     float cratio;
+	/*
+	 * The number of files referencing this chunk.
+	 * Because all file IDs are persistent,
+	 * it is not necessary to write this value.
+	 * Instead, we reconstruct this value when reading it.
+	 */
+	int fcount;
 	/* list records the IDs of the files
 	 * format: 0 1 2 -10 3 4 5 6 -90 ...
 	 * -90 indicates file 6 references the chunk by 90 times

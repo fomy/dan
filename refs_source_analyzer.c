@@ -1,0 +1,104 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <getopt.h>
+#include <assert.h>
+#include "store.h"
+
+void analyze_references_source(){
+	init_iterator("CHUNK");
+
+	struct chunk_rec r;
+	memset(&r, 0, sizeof(r));
+
+	int total_references = 0; // total duplicate references
+	int intra_file = 0; // intra-file redundancy
+	int duplicate_file = 0; // duplicate files
+	int min_fp = 0; // by minimum fingerprint
+	int max_fp = 0; // by maximum fingerprint
+	int same_suffix = 0; // by file suffix
+	int missed_file = 0; // missed
+	while(iterate_chunk(&r) == ITER_CONTINUE){
+
+		total_references += r.rcount - 1;
+		intra_file += r.rcount - r.fcount;
+		if(r.fcount == 1) // chunks referenced by a single file 
+			continue;
+
+		struct file_rec files[r.fcount];
+		memset(files, 0, sizeof(files));
+		int i = 0, j = 0;
+		for(; i < r.elem_num; i++){
+			if (r.list[i] < 0) continue;
+			files[j].fid = r.list[i];
+			search_file(&files[j++]);
+		}
+		assert(j == r.fcount);
+
+		/* analyze files */
+		int identical = 0, min_similar = 0, similar = 0, same_suffix = 0;
+		for(i=0; i < r.fcount - 1; i++){
+			for (j = i + 1; j < r.fcount; j++){
+				if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) 
+						== 0){
+					identical = 1;
+					break;
+				}else if(memcmp(files[i].minhash, files[j].minhash, 
+							sizeof(files[i].minhash)) == 0){
+					min_similar = 1;
+				}else if(memcmp(files[i].maxhash, files[j].maxhash, 
+							sizeof(files[i].maxhash)) == 0){
+					similar = 1;
+				}else{
+					char suf1[8];
+					char suf2[8];
+					parse_file_suffix(files[i].fname, suf1, sizeof(suf1));
+					parse_file_suffix(files[j].fname, suf2, sizeof(suf2));
+					if (strcmp(suf1, suf2) == 0) {
+						same_suffix = 1;
+					}
+				}
+			}
+			if(identical == 1)
+				duplicate_file++;
+			else if(min_similar == 1)
+				min_hp++;
+			else if(similar == 1)
+				max_hp++;
+			else if(same_suffix == 1)
+				same_suffix++;
+			else
+				missed_file++;
+		}
+		for(i = 0; i < r.fcount; i++){
+			free(files[i].fname);
+		}
+	}
+
+	close_iterator("CHUNK");
+
+	assert(total_references == intra_file + duplicate_file + min_hp
+			+ max_hp + same_suffix + missed_file);
+
+	fprintf(stderr, "%8s %8s %8s %8s %8s %8s\n", 
+			"Intra", "DupFile", "Min", "Max", "Suffix", "Missed");
+	fprintf(stdout, "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n", 
+			1.0*intra_file/total_references, 
+			1.0*duplicate_file/total_references, 
+			1.0*min_hp/total_references, 
+			1.0*max_hp/total_references, 
+			1.0*same_suffix/total_references, 
+			1.0*missed_file/total_references);
+}
+
+
+int main(int argc, char *argv[])
+{
+	open_database("dbhome/");
+
+	analyze_references_source();
+
+	close_database();
+
+	return 0;
+}

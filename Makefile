@@ -9,7 +9,7 @@ MAKE = make
 
 all:
 	$(MAKE) collector 
-	$(MAKE) chunk_size_analyzer reference_analyzer
+	$(MAKE) chunk_size_analyzer reference_analyzer refs_source_analyzer
 	#$(MAKE) collision_detector 
 	#$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter simd_reverse_exporter
 	#$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
@@ -37,8 +37,8 @@ chunk_size_analyzer:store chunk_size_analyzer.c
 	$(CC) $(CFLAGS) $(INCLUDE) chunk_size_analyzer.c -o chunk_size_analyzer store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 # file analyzer
-#file_refs_source_analyzer:store file_refs_source_analyzer.c
-	#$(CC) $(CFLAGS) $(INCLUDE) file_refs_source_analyzer.c store.o data.o -o file_refs_source_analyzer $(DBLIBS)
+refs_source_analyzer:store refs_source_analyzer.c
+	$(CC) $(CFLAGS) $(INCLUDE) refs_source_analyzer.c -o refs_source_analyzer store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 #file_size_analyzer:store file_size_analyzer.c
 	#$(CC) $(CFLAGS) $(INCLUDE) file_size_analyzer.c store.o data.o -o file_size_analyzer -lglib $(DBLIBS) -lm

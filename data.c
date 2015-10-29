@@ -13,6 +13,7 @@ void reset_chunk_rec(struct chunk_rec *r)
     r->csize = 0;
     r->cratio = 0;
 	r->elem_num = 0;
+	r->fcount = 0;
 }
 
 void free_chunk_rec(struct chunk_rec *r)
@@ -34,6 +35,7 @@ void copy_chunk_rec(struct chunk_rec *r, struct chunk_rec *copy)
 	copy->csize = r->csize;
 	copy->cratio = r->cratio;
 	copy->elem_num = r->elem_num;
+	copy->fcount = r->fcount;
 
 	if (copy->list == NULL) {
 		copy->listsize = copy->elem_num;

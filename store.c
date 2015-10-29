@@ -47,6 +47,7 @@ static void serial_chunk_rec(struct chunk_rec* r, DBT* value)
 	off += sizeof(int) * r->elem_num;
 
 	assert(off == value->size);
+
 }
 
 static void unserial_chunk_rec(DBT *value, struct chunk_rec *r)
@@ -66,7 +67,7 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r)
 	memcpy(&r->elem_num, value->data + len, sizeof(r->elem_num));
 	len += sizeof(r->elem_num);
 
-	if(r->list == NULL) {
+	if (r->list == NULL) {
 		r->listsize = r->elem_num;
 		r->list = malloc(sizeof(int) * r->listsize);
 	} else if (r->listsize > r->elem_num * 2 || r->listsize < r->elem_num) {
@@ -78,6 +79,14 @@ static void unserial_chunk_rec(DBT *value, struct chunk_rec *r)
 	len += sizeof(int) * r->elem_num;
 
 	assert(len == value->size);
+
+	/* Get the file count */
+	int i = 0;
+	r->fcount = 0;
+	for (; i<r->elem_num; i++) {
+		if (r->list[i] < 0) continue;
+		r->fcount++;
+	}
 }
 
 static int fingerprint_equal(void *fp1, void *fp2) {
@@ -264,11 +273,12 @@ void reference_chunk(struct chunk_rec *r, int fid)
 		cached_chunk->list[cached_chunk->elem_num] = -2;
 		cached_chunk->elem_num++;
 	} else if (cached_chunk->list[cached_chunk->elem_num - 1] < 0 &&
-			fid == cached_chunk->list[cached_chunk->elem_num -2]) {
+			fid == cached_chunk->list[cached_chunk->elem_num - 2]) {
 		cached_chunk->list[cached_chunk->elem_num - 1] -= 1;
 	} else {
 		cached_chunk->list[cached_chunk->elem_num] = fid;
 		cached_chunk->elem_num++;
+		cached_chunk->fcount++;
 	}
 
 }
