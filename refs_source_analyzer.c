@@ -62,9 +62,9 @@ void analyze_references_source(){
 			if(identical == 1)
 				duplicate_file++;
 			else if(min_similar == 1)
-				min_hp++;
+				min_fp++;
 			else if(similar == 1)
-				max_hp++;
+				max_fp++;
 			else if(same_suffix == 1)
 				same_suffix++;
 			else
@@ -77,16 +77,16 @@ void analyze_references_source(){
 
 	close_iterator("CHUNK");
 
-	assert(total_references == intra_file + duplicate_file + min_hp
-			+ max_hp + same_suffix + missed_file);
+	assert(total_references == intra_file + duplicate_file + min_fp
+			+ max_fp + same_suffix + missed_file);
 
 	fprintf(stderr, "%8s %8s %8s %8s %8s %8s\n", 
 			"Intra", "DupFile", "Min", "Max", "Suffix", "Missed");
 	fprintf(stdout, "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f\n", 
 			1.0*intra_file/total_references, 
 			1.0*duplicate_file/total_references, 
-			1.0*min_hp/total_references, 
-			1.0*max_hp/total_references, 
+			1.0*min_fp/total_references, 
+			1.0*max_fp/total_references, 
 			1.0*same_suffix/total_references, 
 			1.0*missed_file/total_references);
 }
