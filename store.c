@@ -358,6 +358,7 @@ int search_file(struct file_rec *r)
 		}
 
 		cached_file = malloc(sizeof(*cached_file));
+		memset(cached_file, 0, sizeof(*cached_file));
 		unserial_file_rec(&value, cached_file);
 		lru_cache_insert(file_cache, &cached_file->fid, cached_file, NULL);
 
