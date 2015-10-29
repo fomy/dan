@@ -36,8 +36,8 @@ void analyze_references_source(){
 		assert(j == r.fcount);
 
 		/* analyze files */
-		int identical = 0, min_similar = 0, similar = 0, same_suffix = 0;
 		for(i=0; i < r.fcount - 1; i++){
+			int identical = 0, min_similar = 0, similar = 0, suffix = 0;
 			for (j = i + 1; j < r.fcount; j++){
 				if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) 
 						== 0){
@@ -55,7 +55,7 @@ void analyze_references_source(){
 					parse_file_suffix(files[i].fname, suf1, sizeof(suf1));
 					parse_file_suffix(files[j].fname, suf2, sizeof(suf2));
 					if (strcmp(suf1, suf2) == 0) {
-						same_suffix = 1;
+						suffix = 1;
 					}
 				}
 			}
@@ -65,7 +65,7 @@ void analyze_references_source(){
 				min_fp++;
 			else if(similar == 1)
 				max_fp++;
-			else if(same_suffix == 1)
+			else if(suffix == 1)
 				same_suffix++;
 			else
 				missed_file++;
