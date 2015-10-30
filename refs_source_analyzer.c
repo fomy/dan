@@ -25,13 +25,14 @@ void analyze_references_source(){
 		if(r.fcount == 1) // chunks referenced by a single file 
 			continue;
 
-		struct file_rec files[r.fcount];
-		memset(files, 0, sizeof(files));
+		struct file_rec *files[r.fcount];
 		int i = 0, j = 0;
 		for(; i < r.elem_num; i++){
 			if (r.list[i] < 0) continue;
-			files[j].fid = r.list[i];
-			search_file(&files[j++]);
+			files[j] = malloc(sizeof(struct file_rec));
+			memset(files[j], 0, sizeof(struct file_rec));
+			files[j]->fid = r.list[i];
+			search_file(files[j++]);
 		}
 		assert(j == r.fcount);
 
@@ -39,21 +40,21 @@ void analyze_references_source(){
 		for(i=0; i < r.fcount - 1; i++){
 			int identical = 0, min_similar = 0, similar = 0, suffix = 0;
 			for (j = i + 1; j < r.fcount; j++){
-				if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) 
+				if(memcmp(files[i]->hash, files[j]->hash, sizeof(files[i]->hash)) 
 						== 0){
 					identical = 1;
 					break;
-				}else if(memcmp(files[i].minhash, files[j].minhash, 
-							sizeof(files[i].minhash)) == 0){
+				}else if(memcmp(files[i]->minhash, files[j]->minhash, 
+							sizeof(files[i]->minhash)) == 0){
 					min_similar = 1;
-				}else if(memcmp(files[i].maxhash, files[j].maxhash, 
-							sizeof(files[i].maxhash)) == 0){
+				}else if(memcmp(files[i]->maxhash, files[j]->maxhash, 
+							sizeof(files[i]->maxhash)) == 0){
 					similar = 1;
 				}else{
 					char suf1[8];
 					char suf2[8];
-					parse_file_suffix(files[i].fname, suf1, sizeof(suf1));
-					parse_file_suffix(files[j].fname, suf2, sizeof(suf2));
+					parse_file_suffix(files[i]->fname, suf1, sizeof(suf1));
+					parse_file_suffix(files[j]->fname, suf2, sizeof(suf2));
 					if (strcmp(suf1, suf2) == 0) {
 						suffix = 1;
 					}
@@ -71,7 +72,7 @@ void analyze_references_source(){
 				missed_file++;
 		}
 		for(i = 0; i < r.fcount; i++){
-			free(files[i].fname);
+			free_file_rec(files[i]);
 		}
 	}
 
