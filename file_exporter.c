@@ -157,22 +157,22 @@ void collect_missed_files()
 			assert(j == r.fcount);
 
 			for (i=1; i < r.fcount; i++) {
-				if (memcmp(files[i].minhash, files[i-1].minhash, 
-							sizeof(files[i].minhash)) != 0) {
+				if (memcmp(files[i]->minhash, files[i-1]->minhash, 
+							sizeof(files[i]->minhash)) != 0) {
 					char suffix[8];
 					printf("CHUK %d ", r.fcount);
 					print_hash(r.hash, 10);
 					int j = 0;
 					for(; j<r.fcount; j++){
-						parse_file_suffix(files[j].fname, suffix, sizeof(suffix));
+						parse_file_suffix(files[j]->fname, suffix, sizeof(suffix));
 						if(strncmp(suffix, "edu,", 4) == 0){
 							strcpy(suffix, "edu,?");
 						}else if(strlen(suffix) == 0){
 							strcpy(suffix, ".None");
 						}
-						printf("FILE %d %" PRId64 " %s %s ", files[j].fid, 
-								files[j].fsize, files[j].fname, suffix);
-						print_hash(files[j].minhash, 10);
+						printf("FILE %d %" PRId64 " %s %s ", files[j]->fid, 
+								files[j]->fsize, files[j]->fname, suffix);
+						print_hash(files[j]->minhash, 10);
 					}
 
 					count++;
