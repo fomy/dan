@@ -83,7 +83,7 @@ void collect_intra_redundant_files()
 				if (r.list[i] < 0) {
 					/* An intra-file redundancy */
 					struct intra_redundant_file * irfile = 
-						g_hash_table_lookup(fileset, &flist[i]);
+						g_hash_table_lookup(fileset, &r.list[i-1]);
 					if (irfile == NULL) {
 						f.fid = r.list[i-1];
 						int ret = search_file(&f);
