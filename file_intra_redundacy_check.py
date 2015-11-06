@@ -69,11 +69,11 @@ def get_popular_types(trace):
 # -p output popular suffix
 if __name__ == "__main__":
 
-    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "ps")
+    (opts, args) = getopt.gnu_getopt(sys.argv[1:], "ts")
 
     trace = open(args[0], "r")
     for o, a in opts:
-        if o in ["-p"]:
+        if o in ["-t"]:
             get_popular_types(trace)
         elif o in ["-s"]:
             get_file_size(trace)

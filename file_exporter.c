@@ -156,7 +156,7 @@ void collect_missed_files()
 			}
 			assert(j == r.fcount);
 
-			for (i=1; i < r.fcount; i++) {
+			for (i = 1; i < r.fcount; i++) {
 				if (memcmp(files[i]->minhash, files[i-1]->minhash, 
 							sizeof(files[i]->minhash)) != 0) {
 					char suffix[8];
@@ -178,6 +178,10 @@ void collect_missed_files()
 					count++;
 					break;
 				}
+			}
+
+			for (i = 0; i < r.fcount; i++) {
+				free_file_rec(files[i]);
 			}
 		}
 	}
