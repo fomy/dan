@@ -95,11 +95,11 @@ int add_region_to_container(struct region_rec* r, struct container_rec* c)
 void parse_file_suffix(char *path, char *suffix, int suffixlen)
 {
     int i = strlen(path) - 1;
-    while(i>=0 && path[i]!= '.' && path[i]!='\\' && path[i]!='/')
+    while (i >= 0 && path[i] != '.' && path[i] != '\\' && path[i] != '/')
         i--;
-    if(i<0 || path[i] == '\\' || path[i] == '/')
+    if (i < 0 || path[i] == '\\' || path[i] == '/')
         memset(suffix, 0, suffixlen);
-    else{
+    else {
         assert(path[i] == '.');
         strncpy(suffix, &path[i+1], suffixlen);
         suffix[suffixlen-1] = 0;
