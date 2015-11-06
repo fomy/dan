@@ -159,7 +159,7 @@ void open_database(char *db_home)
 
 	chunk_cache = new_lru_cache(100000000, g_int_hash, fingerprint_equal,
 			NULL, free_chunk_rec);
-	file_cache = new_lru_cache(10000, g_int_hash, g_int_equal,
+	file_cache = new_lru_cache(10000000, g_int_hash, g_int_equal,
 			NULL, free_file_rec);
 }
 
