@@ -130,8 +130,12 @@ void open_database(char *db_home)
 	}
 
 	/* DB_CREATE will create db if not existed,
-	 * otherwise, be ignored. Right? */
-	ret = db_envp->open(db_envp, db_home, DB_CREATE|DB_INIT_MPOOL, 0);
+	 * otherwise, be ignored. Right? 
+	 * DB_RECOVER will run recover after failures,
+	 * and DB_INIT_TXN is required for recovery.
+	 * */
+	ret = db_envp->open(db_envp, db_home, 
+			DB_CREATE|DB_INIT_MPOOL|DB_INIT_TXN|DB_RECOVER, 0);
 	if (ret != 0) {
 		fprintf(stderr, "%s\n", db_strerror(ret));
 		exit(-1);
