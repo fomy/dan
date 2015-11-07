@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <db.h>
 #include <glib.h>
+#include <signal.h>
 
 #include "data.h"
 #include "lru_cache.h"
@@ -115,6 +116,11 @@ static void update_chunk_rec(struct chunk_rec *r) {
 
 }
 
+static void sigint_handler(int sig)
+{
+	close_database();
+}
+
 void open_database(char *db_home)
 {
 	int ret = db_env_create(&db_envp, 0);
@@ -161,6 +167,8 @@ void open_database(char *db_home)
 			NULL, free_chunk_rec);
 	file_cache = new_lru_cache(10000000, g_int_hash, g_int_equal,
 			NULL, free_file_rec);
+
+	signal(SIGINT, sigint_handler);
 }
 
 void close_database()

@@ -93,7 +93,8 @@ void collect_intra_redundant_files()
 						irfile->fid = f.fid;
 						irfile->fsize = f.fsize;
 						memcpy(irfile->minhash, f.minhash, sizeof(f.minhash));
-						parse_file_suffix(f.fname, irfile->suffix, sizeof(irfile->suffix));
+						parse_file_suffix(f.fname, irfile->suffix, 
+								sizeof(irfile->suffix));
 						if (strncmp(irfile->suffix, "edu,", 4) == 0) {
 							strcpy(irfile->suffix, "edu,?");
 						} else if (strlen(irfile->suffix) == 0) {
