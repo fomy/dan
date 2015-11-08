@@ -48,7 +48,7 @@ void chunk_nodedup_simd_trace(char **path, int n,  int weighted)
 
 			int i = 0;
 			int64_t size = chunk.csize;
-			for (; i<chunk.rcount; i++) {
+			for (; i < chunk.rcount; i++) {
 				int lines_no = (chunk.csize+1023)/1024;
 				sum += size*lines_no;
 				count += lines_no;
@@ -206,7 +206,7 @@ void chunk_dedup_simd_trace(char **path, int n,  int weighted)
  * File level, no dedup
  * weighted by size?
  */
-void file_nodedup_simd_trace(char **path, int n,  int weighted)
+void file_nodedup_simd_trace(char **path, int npath,  int weighted)
 {
 	if (weighted) {
 		printf("FILE:NO DEDUP:WEIGHTED\n");
@@ -286,7 +286,7 @@ void file_nodedup_simd_trace(char **path, int n,  int weighted)
 
 	int path_cur = 0;
 
-	for (; path_cur < n; path_cur++) {
+	for (; path_cur < npath; path_cur++) {
 		handle = hashfile_open(path[path_cur]);
 
 		if (!handle) {
@@ -331,10 +331,7 @@ void file_nodedup_simd_trace(char **path, int n,  int weighted)
 			/*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
 			/*else*/
 			/*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
-			if (filesize == 0) {
-				fprintf(stderr, "empty files have been excluded\n");
-				exit(-1);
-			}
+			if (filesize == 0) continue;
 
 			restore_files++;
 			restore_file_bytes += filesize;
