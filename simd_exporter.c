@@ -243,7 +243,6 @@ void file_nodedup_simd_trace(char **path, int n,  int weighted)
 				intra_ref_count = -chunk.list[cur++]-1;
 				check_rcount += intra_ref_count;
 
-				assert(chunk.list[cur] > 0);
 			} else if (intra_ref_count == 0) {
 				fr.fid = chunk.list[cur++];
 				assert(search_file(&fr) == STORE_EXISTED);
