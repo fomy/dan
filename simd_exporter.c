@@ -459,16 +459,13 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 					assert(search_chunk_directly(&chunk) == STORE_EXISTED);
 					int i = 0;
 					for (; i < chunk.elem_num; i++) {
+						struct restoring_file* rfile;
 						if (chunk.list[i] < 0) {
-							struct restoring_file* rfile = g_hash_table_lookup(files
-									, &chunk.list[i-1]);
+							rfile = g_hash_table_lookup(files, &chunk.list[i-1]);
 							rfile->chunk_num -= chunk.list[i] + 1;
-
 						} else {
-
 							int fid = chunk.list[i];
-							struct restoring_file* rfile = g_hash_table_lookup(files
-									, &fid);
+							rfile = g_hash_table_lookup(files, &fid);
 							if (!rfile) {
 								fr.fid = fid;
 								assert(search_file_directly(&fr) == STORE_EXISTED);
