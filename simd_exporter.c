@@ -393,7 +393,6 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 
 	printf("%.6f\n", 1.0*lsize/psize);
 	fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 
-			chunk.hashlen = 20;
 			1.0*lsize/1024/1024/1024,
 			1.0*psize/1024/1024/1024, 
 			1.0*lsize/psize);
