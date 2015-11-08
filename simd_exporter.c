@@ -393,6 +393,7 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 
 	printf("%.6f\n", 1.0*lsize/psize);
 	fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 
+			chunk.hashlen = 20;
 			1.0*lsize/1024/1024/1024,
 			1.0*psize/1024/1024/1024, 
 			1.0*lsize/psize);
@@ -458,24 +459,30 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 					assert(search_chunk_directly(&chunk) == STORE_EXISTED);
 					int i = 0;
 					for (; i < chunk.elem_num; i++) {
-						if (chunk.list[i] < 0) continue;
+						if (chunk.list[i] < 0) {
+							struct restoring_file* rfile = g_hash_table_lookup(files
+									, &chunk.list[i-1]);
+							rfile->chunk_num -= chunk.list[i] + 1;
 
-						int fid = chunk.list[i];
-						struct restoring_file* rfile = g_hash_table_lookup(files
-								, &fid);
-						if (!rfile) {
-							fr.fid = fid;
-							assert(search_file_directly(&fr) == STORE_EXISTED);
+						} else {
 
-							rfile = malloc(sizeof(*rfile));
+							int fid = chunk.list[i];
+							struct restoring_file* rfile = g_hash_table_lookup(files
+									, &fid);
+							if (!rfile) {
+								fr.fid = fid;
+								assert(search_file_directly(&fr) == STORE_EXISTED);
 
-							rfile->id = fid;
-							rfile->chunk_num = fr.cnum;
-							rfile->size = fr.fsize;
+								rfile = malloc(sizeof(*rfile));
 
-							g_hash_table_insert(files, &rfile->id, rfile);
+								rfile->id = fid;
+								rfile->chunk_num = fr.cnum;
+								rfile->size = fr.fsize;
+
+								g_hash_table_insert(files, &rfile->id, rfile);
+							}
+							rfile->chunk_num--;
 						}
-						rfile->chunk_num--;
 
 						if (rfile->chunk_num == 0) {
 							/* a file is restored */
