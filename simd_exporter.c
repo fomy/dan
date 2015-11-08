@@ -237,7 +237,7 @@ void file_nodedup_simd_trace(char **path, int n,  int weighted)
 		int intra_ref_count = 0; // count of intra-file references
 		int check_rcount = 0;
 		for (; i < chunk.rcount; i++) {
-			if (chunk.list[cur] < 0) {
+			if (cur < chunk.elem_num && chunk.list[cur] < 0) {
 				assert(intra_ref_count == 0);
 
 				intra_ref_count = -chunk.list[cur++]-1;
