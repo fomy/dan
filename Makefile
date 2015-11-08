@@ -10,7 +10,7 @@ MAKE = make
 all:
 	$(MAKE) collector 
 	$(MAKE) chunk_size_analyzer reference_analyzer refs_source_analyzer
-	$(MAKE) file_exporter 
+	$(MAKE) file_exporter simd_exporter
 	#$(MAKE) collision_detector 
 	#$(MAKE) refs_distribution_exporter refs_locality_exporter simd_exporter simd_reverse_exporter
 	#$(MAKE) chunk_refs_distance_analyzer chunk_size_analyzer 
@@ -51,8 +51,8 @@ file_exporter:store file_exporter.c
 	$(CC) $(CFLAGS) $(INCLUDE) file_exporter.c -o file_exporter store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 # SIMD trace exportr
-#simd_exporter:store simd_exporter.c libhashfile
-	#$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c store.o data.o -o simd_exporter libhashfile.o -lglib  $(DBLIBS)
+simd_exporter:store simd_exporter.c libhashfile
+	$(CC) $(CFLAGS) $(INCLUDE) simd_exporter.c -o simd_exporter libhashfile.o store.o data.o lru_cache.o -lcrypto -lglib -L/usr/local/BerkeleyDB.6.1/lib -ldb
 
 #simd_reverse_exporter:store simd_reverse_exporter.c libhashfile
 	#$(CC) $(CFLAGS) $(INCLUDE) simd_reverse_exporter.c store.o data.o -o simd_reverse_exporter libhashfile.o -lglib  $(DBLIBS)
