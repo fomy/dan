@@ -175,6 +175,9 @@ void open_database(char *db_home)
 	signal(SIGINT, sigint_handler);
 }
 
+void set_chunk_cache (int size) {
+}
+
 void close_database()
 {
 	if (chunk_cache) {
@@ -237,6 +240,35 @@ int search_chunk(struct chunk_rec *r)
 
 	copy_chunk_rec(cached_chunk, r);
 
+	return STORE_EXISTED;
+}
+
+/* without cache */
+int search_chunk_directly(struct chunk_rec *r) {
+	DBT key, value;
+
+	memset(&key, 0, sizeof(DBT));
+	memset(&value, 0, sizeof(DBT));
+
+	key.data = r->hash;
+	key.size = r->hashlen;
+
+	value.data = NULL;
+	value.size = 0;
+	value.flags |= DB_DBT_MALLOC;
+
+	int ret = chunk_dbp->get(chunk_dbp, NULL, &key, &value, 0);
+
+	if (ret == DB_NOTFOUND) {
+		return STORE_NOTFOUND;
+	} else if (ret != 0) {
+		fprintf(stderr, "%s\n", db_strerror(ret));
+		exit(-1);
+	}
+
+	unserial_chunk_rec(&value, r);
+
+	free(value.data);
 	return STORE_EXISTED;
 }
 
@@ -378,6 +410,32 @@ int search_file(struct file_rec *r)
 	}
 
 	copy_file_rec(cached_file, r);
+
+	return STORE_EXISTED;
+}
+
+/* without cache */
+int search_file_directly(struct file_rec *r)
+{
+	DBT key, value;
+	memset(&key, 0, sizeof(DBT));
+	memset(&value, 0, sizeof(DBT));
+
+	key.data = &r->fid;
+	key.size = sizeof(r->fid);
+
+	value.data = NULL;
+	value.size = 0;
+	value.flags |= DB_DBT_MALLOC;
+
+	int ret = file_dbp->get(file_dbp, NULL, &key, &value, 0);
+	if (ret == DB_NOTFOUND) {
+		return STORE_NOTFOUND;
+	}
+
+	unserial_file_rec(&value, r);
+
+	free(value.data);
 
 	return STORE_EXISTED;
 }
