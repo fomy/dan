@@ -14,7 +14,6 @@ void close_database();
 
 int search_chunk(struct chunk_rec *r);
 int search_chunk_directly(struct chunk_rec *r);
-int search_chunk_local(struct chunk_rec *r);
 void update_chunk(struct chunk_rec *r);
 int get_chunk_number();
 

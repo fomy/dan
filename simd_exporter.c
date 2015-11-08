@@ -167,10 +167,11 @@ void chunk_dedup_simd_trace(char **path, int n,  int weighted)
 				int chunksize = ci->size;
 				memcpy(chunk.hash, ci->hash, hashsize);
 				memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-				chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+				/*chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);*/
+				chunk.hashlen = 20;
 
 				if (!g_hash_table_contains(chunks, chunk.hash)) {
-					assert(search_chunk(&chunk) == STORE_EXISTED);
+					assert(search_chunk_directly(&chunk) == STORE_EXISTED);
 					int64_t sum = chunk.csize;
 					sum *= chunk.rcount;
 					restore_chunks += chunk.rcount;
@@ -245,7 +246,7 @@ void file_nodedup_simd_trace(char **path, int n,  int weighted)
 				assert(chunk.list[cur] > 0);
 			} else if (intra_ref_count == 0) {
 				fr.fid = chunk.list[cur++];
-				search_file(&fr);
+				assert(search_file(&fr) == STORE_EXISTED);
 				intra_ref_count = 1;
 
 				check_rcount++;
@@ -386,7 +387,7 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 				if (chunk.list[i] < 0) continue;
 
 				fr.fid = chunk.list[i];
-				search_file(&fr);
+				assert(search_file(&fr) == STORE_EXISTED);
 
 				sum += fr.fsize;
 			}
@@ -467,7 +468,7 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 								, &fid);
 						if (!rfile) {
 							fr.fid = fid;
-							search_file_directly(&fr);
+							assert(search_file_directly(&fr) == STORE_EXISTED);
 
 							rfile = malloc(sizeof(*rfile));
 
