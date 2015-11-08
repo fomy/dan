@@ -450,7 +450,8 @@ void file_dedup_simd_trace(char **path, int n,  int weighted){
 				int chunksize = ci->size;
 				memcpy(chunk.hash, ci->hash, hashsize);
 				memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-				chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+				/*chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);*/
+				chunk.hashlen = 20;
 
 				if (!g_hash_table_contains(chunks, chunk.hash)) {
 					/* restore a chunk */
