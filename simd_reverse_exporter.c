@@ -95,7 +95,7 @@ void reverse_trace(char **path, int n, char* reverse_file)
 
 	fprintf(stderr, "queue size = %d\n", g_sequence_get_length(hashqueue));
 
-	int fd = open(reverse_file, O_CREAT|O_WRONLY);
+	int fd = open(reverse_file, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
 	if(fd < 0){
 		fprintf(stderr, "cannot open file %s\n", reverse_file);
 		exit(-1);
