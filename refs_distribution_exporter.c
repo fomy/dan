@@ -5,6 +5,16 @@
 #include <assert.h>
 #include "store.h"
 
+static void print_hash(const uint8_t *hash,
+        int hash_size_in_bytes)
+{
+    int j;
+    printf("%.2hhx", hash[0]);
+    for (j = 1; j < hash_size_in_bytes; j++)
+        printf(":%.2hhx", hash[j]);
+    printf("\n");
+}
+
 void get_reference_per_chunk()
 {
     init_iterator("CHUNK");
@@ -51,89 +61,68 @@ void get_reference_per_chunk()
 
 }
 
-/*void get_logical_size_per_container(){*/
-    /*init_iterator("CONTAINER");*/
+void output_popular_chunks(int h)
+{
+    init_iterator("CHUNK");
 
-    /*float max = 1;*/
-    /*int count = 0;*/
+	int count = 0;
+	int pop_count = 0;
 
-    /*int stat[10];*/
-    /*memset(stat, 0, sizeof(stat));*/
+	int64_t logical_size = 0;
+	int64_t physical_size = 0;
 
-    /*struct container_rec r;*/
-    /*memset(&r, 0, sizeof(r));*/
-    /*while(iterate_container(&r) == 0){*/
-        /*count++;*/
-        /*float factor = 1.0 * r.lsize / CONTAINER_SIZE;*/
-        /*fprintf(stdout, "%10.2f\n", factor < 1.0 ? 1.0 : factor);*/
-        /*if(factor > max)*/
-            /*max = factor;*/
-        /*if(factor >= 10){*/
-            /*stat[9]++;*/
-        /*}else{*/
-            /*int level = factor;*/
-            /*[>printf("%d, %f\n", level, factor);<]*/
-            /*stat[level]++;*/
-        /*}*/
-    /*}*/
+	int64_t pop_physical_size = 0;
+	int64_t pop_logical_size = 0;
+	
+    struct chunk_rec r;
+    memset(&r, 0, sizeof(r));
+    while (iterate_chunk(&r, 0) == 0) {
+        count++;
 
-    /*fprintf(stderr, "max = %10.2f\n", max);*/
-    /*int i = 0;*/
-    /*for(;i<10;i++){*/
-        /*fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);*/
-    /*}*/
+		physical_size += r.csize;
 
-/*}*/
+		int64_t ls = r.csize;
+		ls *= r.rcount;
+		logical_size += ls;
 
-/*void get_logical_size_per_region(){*/
-    /*init_iterator("REGION");*/
+        if (r.rcount > h) {
+			pop_count++;
 
-    /*float max = 1;*/
-    /*int count = 0;*/
+			pop_physical_size += r.csize;
 
-    /*int stat[10];*/
-    /*memset(stat, 0, sizeof(stat));*/
+			pop_logical_size += ls;
 
-    /*struct region_rec r;*/
-    /*memset(&r, 0, sizeof(r));*/
-    /*while(iterate_region(&r) == 0){*/
-        /*count++;*/
-        /*float factor = 1.0 * r.lsize / COMPRESSION_REGION_SIZE;*/
-        /*fprintf(stdout, "%10.2f\n", factor < 1.0 ? 1.0 : factor);*/
-        /*if(factor > max)*/
-            /*max = factor;*/
-        /*if(factor >= 10){*/
-            /*stat[9]++;*/
-        /*}else{*/
-            /*int level = factor;*/
-            /*[>printf("%d, %f\n", level, factor);<]*/
-            /*stat[level]++;*/
-        /*}*/
-    /*}*/
+			print_hash(r.hash, 20);
+        }
+    }
 
-    /*fprintf(stderr, "max = %10.2f\n", max);*/
-    /*int i = 0;*/
-    /*for(;i<10;i++){*/
-        /*fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);*/
-    /*}*/
+	fprintf(stderr, "percentage in count: %.6f\n",
+			1.0*pop_count/count);
+	fprintf(stderr, "percentage in physical capacity: %.6f\n", 
+			1.0*pop_physical_size/physical_size);
+	fprintf(stderr, "percentage in logical capacity: %.6f\n",
+			1.0*pop_logical_size/logical_size);
+    close_iterator();
 
-/*}*/
+}
 
-const char * const short_options = "u:";
+const char * const short_options = "p:";
 struct option long_options[] = {
-		{ "unit", 0, NULL, 'u' },
+		{ "popular", 0, NULL, 'p' },
 		{ NULL, 0, NULL, 0 }
 };
 
 int main(int argc, char *argv[])
 {
     int opt = 0;
-    char *unit = NULL;
+	int popular_chunks = 0;
+	int h = 10;
 	while ((opt = getopt_long(argc, argv, short_options, long_options, NULL))
 			!= -1) {
 		switch (opt) {
-            case 'u':
-                unit = optarg;
+            case 'p':
+				popular_chunks = 1;
+				h = atoi(optarg);
                 break;
             default:
                 return -1;
@@ -142,15 +131,10 @@ int main(int argc, char *argv[])
 
     open_database();
 
-    if(unit == NULL || strcasecmp(unit, "CHUNK") == 0){
+    if (popular_chunks == 0) {
         get_reference_per_chunk();
-    }else if(strcasecmp(unit, "REGION") == 0){
-        /*get_logical_size_per_region();*/
-    }else if(strcasecmp(unit, "CONTAINER") == 0){
-        /*get_logical_size_per_container();*/
-    }else{
-        fprintf(stderr, "invalid unit");
-        return -1;
+    } else {
+		output_popular_chunks(h);
     }
 
     close_database();
