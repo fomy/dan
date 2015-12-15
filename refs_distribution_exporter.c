@@ -66,6 +66,8 @@ void output_popular_chunks(int h)
 {
     init_iterator("CHUNK");
 
+	int fd = open("pophash", O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
+
 	int count = 0;
 	int pop_count = 0;
 
@@ -94,6 +96,8 @@ void output_popular_chunks(int h)
 			pop_logical_size += ls;
 
 			print_hash(r.hash, 20);
+
+			write(fd, r.hash, 20);
         }
     }
 
@@ -105,6 +109,7 @@ void output_popular_chunks(int h)
 			1.0*pop_logical_size/logical_size);
     close_iterator();
 
+	close(fd);
 }
 
 const char * const short_options = "p:";
