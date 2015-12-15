@@ -3,6 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <assert.h>
+#include <inttypes.h>
 #include "store.h"
 
 static void print_hash(const uint8_t *hash,
