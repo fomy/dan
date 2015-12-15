@@ -5,7 +5,8 @@
 #include <assert.h>
 #include "store.h"
 
-void get_reference_per_chunk(){
+void get_reference_per_chunk()
+{
     init_iterator("CHUNK");
 
     int max = 1;
@@ -13,12 +14,14 @@ void get_reference_per_chunk(){
     char maxhash[20];
 
     int count = 0;
-    int stat[10];
+	/* stat[10] for >10 */
+	/* stat[11] for >20 */
+    int stat[12];
     memset(stat, 0, sizeof(stat));
 
     struct chunk_rec r;
     memset(&r, 0, sizeof(r));
-    while(iterate_chunk(&r, 0) == 0){
+    while (iterate_chunk(&r, 0) == 0) {
         fprintf(stdout, "%d\n", r.rcount);
         count++;
         if(r.rcount > max){
@@ -26,18 +29,23 @@ void get_reference_per_chunk(){
             csize = r.csize;
             memcpy(maxhash, r.hash, 20);
         }
-        if(r.rcount > 10){
-            stat[9]++;
-        }else
-            stat[r.rcount-1]++;
+        if (r.rcount > 10) {
+            stat[10]++;
+			if (r.rcount > 20)
+				stat[11]++;
+        } else
+            stat[r.rcount - 1]++;
     }
 
     fprintf(stderr, "max = %d, size = %d\n", max, csize);
-    fprintf(stderr, "hash = %.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx\n", maxhash[0], maxhash[1], maxhash[2], maxhash[3], maxhash[4], maxhash[5]);
+    fprintf(stderr, "hash = %.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx:%.2hhx\n", 
+			maxhash[0], maxhash[1], maxhash[2], maxhash[3], maxhash[4], maxhash[5]);
     int i = 0;
-    for(;i<10;i++){
+    for (; i < 10; i++) {
         fprintf(stderr, "[%2d : %10.5f]\n", i+1, 1.0*stat[i]/count);
     }
+    fprintf(stderr, "[>10 : %10.5f]\n", 1.0*stat[10]/count);
+    fprintf(stderr, "[>20 : %10.5f]\n", 1.0*stat[11]/count);
 
     close_iterator();
 
