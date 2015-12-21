@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include "libhashfile.h"
 #include "store.h"
 
