@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <errno.h>
 #include <glib.h>
+#include <fcntl.h>
 #include "libhashfile.h"
 #include "store.h"
 
@@ -143,36 +144,38 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 	/* All chunks lost */
 	puts("0");
 
-	int popfd = open(pophashfile, O_RDONLY);
-	char pophashbuf[20];
-	while (read(popfd, pophashbuf, 20) == 20) {
-		char *pophash = malloc(20);
-		memcpy(pophash, pophashbuf, 20);
+	if (pophashfile) {
+		int popfd = open(pophashfile, O_RDONLY);
+		char pophashbuf[20];
+		while (read(popfd, pophashbuf, 20) == 20) {
+			char *pophash = malloc(20);
+			memcpy(pophash, pophashbuf, 20);
 
-		/* restoring a pop chunk */
-		memcpy(chunk.hash, pophash, 20);
-		assert(search_chunk(&chunk));
+			/* restoring a pop chunk */
+			memcpy(chunk.hash, pophash, 20);
+			assert(search_chunk(&chunk));
 
-		int64_t sum = chunk.csize;
-		sum *= chunk.rcount;
-		restore_chunks += chunk.rcount;
+			int64_t sum = chunk.csize;
+			sum *= chunk.rcount;
+			restore_chunks += chunk.rcount;
 
-		restore_physical_bytes += chunk.csize;
-		restore_logical_bytes += sum;
+			restore_physical_bytes += chunk.csize;
+			restore_logical_bytes += sum;
 
-		int progress = restore_physical_bytes * 100/psize;
-		while (progress >= step && step <= 99) {
-			if (weighted)
-				printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
-			else
-				printf("%.6f\n", 1.0*restore_chunks/total_chunks);
-			step++;
+			int progress = restore_physical_bytes * 100/psize;
+			while (progress >= step && step <= 99) {
+				if (weighted)
+					printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
+				else
+					printf("%.6f\n", 1.0*restore_chunks/total_chunks);
+				step++;
+			}
+
+			assert(!g_hash_table_contains(chunks, pophash));
+			g_hash_table_insert(chunks, pophash, NULL);
 		}
-
-		assert(!g_hash_table_contains(chunks, pophash));
-		g_hash_table_insert(chunks, pophash, NULL);
+		close(popfd);
 	}
-	close(popfd);
 
 	while (1) {
 		int ret = hashfile_next_file(handle);
