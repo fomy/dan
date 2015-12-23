@@ -164,10 +164,13 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 
 			int progress = restore_physical_bytes * 100/psize;
 			while (progress >= step && step <= 99) {
-				if (weighted)
+				if (weighted) {
 					printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
-				else
+					fprintf(stderr, "%.6f\n", 1.0*restore_logical_bytes/lsize);
+				} else {
 					printf("%.6f\n", 1.0*restore_chunks/total_chunks);
+					fprintf(stderr, "%.6f\n", 1.0*restore_chunks/total_chunks);
+				}
 				step++;
 			}
 
@@ -210,10 +213,13 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 
 				int progress = restore_physical_bytes * 100/psize;
 				while (progress >= step && step <= 99) {
-					if (weighted)
+					if (weighted) {
 						printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
-					else
+						fprintf(stderr, "%.6f\n", 1.0*restore_logical_bytes/lsize);
+					} else {
 						printf("%.6f\n", 1.0*restore_chunks/total_chunks);
+						fprintf(stderr, "%.6f\n", 1.0*restore_chunks/total_chunks);
+					}
 					step++;
 				}
 				char* hash = malloc(20);
