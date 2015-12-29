@@ -238,11 +238,12 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
  * File level, no dedup
  * weighted by size?
  */
-void file_nodedup_simd_trace(char *path, int weighted){
-	if(weighted){
+void file_nodedup_simd_trace(char *path, int weighted)
+{
+	if (weighted) {
 		printf("FILE:NO DEDUP:WEIGHTED\n");
 		fprintf(stderr, "FILE:NO DEDUP:WEIGHTED\n");
-	}else{
+	} else {
 		printf("FILE:NO DEDUP:NOT WEIGHTED\n");
 		fprintf(stderr, "FILE:NO DEDUP:NOT WEIGHTED\n");
 	}
@@ -258,14 +259,14 @@ void file_nodedup_simd_trace(char *path, int weighted){
 	memset(&fr, 0, sizeof(fr));
 
 	/* USE part */
-	while(iterate_chunk(&chunk, 0) == 0){
+	while (iterate_chunk(&chunk, 0) == 0) {
 
 		int64_t sum = chunk.csize;
 		sum *= chunk.rcount;
 		sys_capacity += sum;
 		int i = 0;
 		int prev = -1;
-		for(; i<chunk.rcount; i++){
+		for (; i<chunk.rcount; i++) {
 			int fid = chunk.list[chunk.rcount+i];
 			fr.fid = fid;
 			search_file(&fr);
@@ -284,7 +285,8 @@ void file_nodedup_simd_trace(char *path, int weighted){
 
 	sys_file_number = get_file_number();
 
-	fprintf(stderr, "capacity = %.4f GB, Files = %"PRId64"\n", 1.0*sys_capacity/1024/1024/1024, sys_file_number);
+	fprintf(stderr, "capacity = %.4f GB, Files = %"PRId64"\n", 
+			1.0*sys_capacity/1024/1024/1024, sys_file_number);
 
 	char buf[4096];
 	struct hashfile_handle *handle;
@@ -362,11 +364,12 @@ struct restoring_file{
 	int64_t size;
 };
 
-void file_dedup_simd_trace(char* path, int weighted){
-	if(weighted){
+void file_dedup_simd_trace(char* path, int weighted)
+{
+	if (weighted) {
 		printf("FILE:DEDUP:WEIGHTED\n");
 		fprintf(stderr, "FILE:DEDUP:WEIGHTED\n");
-	}else{
+	} else {
 		printf("FILE:DEDUP:NOT WEIGHTED\n");
 		fprintf(stderr, "FILE:DEDUP:NOT WEIGHTED\n");
 	}
@@ -381,21 +384,21 @@ void file_dedup_simd_trace(char* path, int weighted){
 	/* USE part */
 	int64_t psize = 0;
 	int64_t lsize = 0;
-	while(iterate_chunk(&chunk, 0) == 0){
+	while (iterate_chunk(&chunk, 0) == 0) {
 
 		int64_t sum = chunk.csize;
 		sum *= chunk.rcount;
 		lsize += sum;
 		psize += chunk.csize;
-		if(!weighted){
+		if (!weighted) {
 			printf("%d\n", chunk.fcount);
-		}else{
+		} else {
 			int i = 0;
 			int prev = -1;
 			int64_t sum = 0;
-			for(; i<chunk.rcount; i++){
+			for (; i<chunk.rcount; i++) {
 				int fid = chunk.list[chunk.rcount+i];
-				if(fid == prev)
+				if (fid == prev)
 					continue;
 				fr.fid = fid;
 				search_file(&fr);
@@ -408,7 +411,8 @@ void file_dedup_simd_trace(char* path, int weighted){
 	}
 
 	printf("%.6f\n", 1.0*lsize/psize);
-	fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 1.0*lsize/1024/1024/1024,
+	fprintf(stderr, "LS = %.4f GB, PS = %.4f GB, D/F = %.4f\n", 
+			1.0*lsize/1024/1024/1024,
 			1.0*psize/1024/1024/1024, 1.0*lsize/psize);
 
 	close_iterator();
@@ -437,8 +441,10 @@ void file_dedup_simd_trace(char* path, int weighted){
 	/* 1 - 99 */
 	int step = 1;
 
-	GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, free);
-	GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, free, NULL);
+	GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, 
+			NULL, free);
+	GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, 
+			free, NULL);
 
 	while (1) {
 		int ret = hashfile_next_file(handle);
@@ -462,14 +468,14 @@ void file_dedup_simd_trace(char* path, int weighted){
 			memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
 			chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
-			if(!g_hash_table_contains(chunks, chunk.hash)){
+			if (!g_hash_table_contains(chunks, chunk.hash)) {
 				/* restore a chunk */
 				assert(search_chunk(&chunk));
 				int i = 0;
-				for(;i<chunk.rcount; i++){
+				for (;i<chunk.rcount; i++) {
 					int fid = chunk.list[chunk.rcount + i];
 					struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
-					if(!rfile){
+					if (!rfile) {
 						fr.fid = fid;
 						search_file(&fr);
 
@@ -494,8 +500,8 @@ void file_dedup_simd_trace(char* path, int weighted){
 
 				restore_bytes += chunk.csize;
 				int progress = restore_bytes * 100/psize;
-				while(progress >= step && step <= 99){
-					if(!weighted)
+				while (progress >= step && step <= 99) {
+					if (!weighted)
 						printf("%.6f\n", 1.0*restore_files/sys_file_number);
 					else
 						printf("%.6f\n", 1.0*restore_file_bytes/lsize);
@@ -552,13 +558,13 @@ int main(int argc, char *argv[])
 	open_database();
 
 	char *path = argv[optind];
-	if(!file_level){
-		if(!dedup)
+	if (!file_level) {
+		if (!dedup)
 			chunk_nodedup_simd_trace(path, weighted);
 		else
 			chunk_dedup_simd_trace(path, weighted, pophash);
-	}else{
-		if(!dedup)
+	} else {
+		if (!dedup)
 			file_nodedup_simd_trace(path, weighted);
 		else
 			file_dedup_simd_trace(path, weighted);
