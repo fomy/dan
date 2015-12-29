@@ -71,8 +71,8 @@ void reverse_trace(char *path, char* reverse_file)
 		*fid = cf_id;
 		g_sequence_prepend(hashqueue, fid);
 
-		fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), 
-				hashfile_curfile_size(handle));
+		/*fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), */
+				/*hashfile_curfile_size(handle));*/
 		while (1) {
 			ci = hashfile_next_chunk(handle);
 			if (!ci) /* exit the loop if it was the last chunk */
