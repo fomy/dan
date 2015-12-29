@@ -471,18 +471,18 @@ void file_nodedup_simd_trace(char* path, int weighted)
 		}
 
 		restore_bytes += chunk.csize;
-		int progress = restore_bytes * 100/psize;
+		int progress = restore_bytes * 100 / sys_capacity;
 		while(progress >= step && step <= 99){
 			if(!weighted){
 				printf("%.6f\n", 1.0*restore_files/sys_file_number);
 				fprintf(stderr, "%.6f\n", 1.0*restore_files/sys_file_number);
 			}else{
-				printf("%.6f\n", 1.0*restore_file_bytes/lsize);
-				fprintf(stderr, "%.6f\n", 1.0*restore_file_bytes/lsize);
+				printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity;
+				fprintf(stderr, "%.6f\n", 1.0*restore_file_bytes/sys_capacity);
 			}
 			step++;
 		}
-		assert(restore_file_bytes <= lsize);
+		assert(restore_file_bytes <= sys_capacity);
 	}
 
 	g_hash_table_destroy(files);
@@ -491,6 +491,7 @@ void file_nodedup_simd_trace(char* path, int weighted)
 	close(fd);
 	puts("1.0");
 }
+
 void file_dedup_simd_trace(char* path, int weighted){
 	if(weighted){
 		printf("FILE:DEDUP:WEIGHTED\n");
