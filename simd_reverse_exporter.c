@@ -53,7 +53,6 @@ void reverse_trace(char *path, char* reverse_file)
 
 	char hash[20];
 	memset(hash, 0, 20);
-	int hashlen = 0;
 	while (1) {
 		int ret = hashfile_next_file(handle);
 		if (ret < 0) {
@@ -84,7 +83,6 @@ void reverse_trace(char *path, char* reverse_file)
 			int chunksize = ci->size;
 			memcpy(hash, ci->hash, hashsize);
 			memcpy(&hash[hashsize], &chunksize, sizeof(chunksize));
-			hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
 			char* newhash = malloc(20 + sizeof(chunksize));
 			memcpy(newhash, hash, 20);
@@ -129,7 +127,7 @@ void reverse_trace(char *path, char* reverse_file)
 		int i = 0;
 		for (; i < cf_cnum; i++) {
 			iter = g_sequence_iter_next(iter);
-			write(fd, g_sequence_get(iter), hashlen + 4);
+			write(fd, g_sequence_get(iter), 24);
 		}
 
 		/* fid */
