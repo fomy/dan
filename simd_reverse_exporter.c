@@ -428,11 +428,11 @@ void file_nodedup_simd_trace(char* path, int weighted)
 	int step = 1;
 
 	char fstart[8];
-	char fend[4];
 	int cf_id = -1;
 	int cf_cnum = 0;
+	int fend = -1;
 	while (1) {
-		byte = read(fd, fstart, 8);
+		int byte = read(fd, fstart, 8);
 		if(byte != 8)
 			break;
 
@@ -459,6 +459,9 @@ void file_nodedup_simd_trace(char* path, int weighted)
 			restore_bytes += chunksize;
 			filesize += chunksize;
 		}
+
+		read(fd, &fend, 4);
+		assert(fend == cf_id);
 
 		assert(filesize > 0);
 		restore_file_bytes += filesize;
