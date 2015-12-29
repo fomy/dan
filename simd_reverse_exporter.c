@@ -136,7 +136,7 @@ void reverse_trace(char *path, char* reverse_file)
 		iter = g_sequence_iter_next(iter);
 		int *tmpfid = g_sequence_get(iter);
 		write(fd, tmpfid, sizeof(int));
-		assert(memcmp(tmpfid, cf_id, sizeof(int)) == 0);
+		assert(memcmp(tmpfid, &cf_id, sizeof(int)) == 0);
 
 		iter = g_sequence_iter_next(iter);
 	}
@@ -427,65 +427,44 @@ void file_nodedup_simd_trace(char* path, int weighted)
 	/* 1 - 99 */
 	int step = 1;
 
-	GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, 
-			NULL, free);
-
-	int byte = read(fd, &chunk.hashlen, 4);
-	assert(byte == 4);
-
+	char fstart[8];
+	char fend[4];
+	int cf_id = -1;
+	int cf_cnum = 0;
 	while (1) {
-		byte = read(fd, chunk.hash, chunk.hashlen);
-		if(byte != chunk.hashlen)
+		byte = read(fd, fstart, 8);
+		if(byte != 8)
 			break;
 
-		/* restore a chunk */
-		assert(search_chunk(&chunk));
-
-		restore_bytes += chunk.csize;
-
+		memcpy(&cf_id, fstart, 4);
+		memcpy(&cf_cnum, fstart + 4, 4);
+		
+		int64_t filesize = 0;
 		int i = 0;
-		for(;i<chunk.rcount; i++){
-			int fid = chunk.list[chunk.rcount + i];
-			struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
-			if(!rfile){
-				fr.fid = fid;
-				search_file(&fr);
+		char chunkhash[20];
+		int chunksize = 0;
+		for (; i < cf_cnum; i++) {
+			int progress = restore_bytes * 100 / sys_capacity;
 
-				rfile = malloc(sizeof(*rfile));
-
-				rfile->id = fid;
-				rfile->chunk_num = fr.cnum;
-				rfile->size = fr.fsize;
-
-				g_hash_table_insert(files, &rfile->id, rfile);
+			while (progress >= step && step <= 99) {
+				if(!weighted)
+					printf("%.6f\n", 1.0*restore_files/sys_file_number);
+				else
+					printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
+				step++;
 			}
-			rfile->chunk_num--;
 
-			if (rfile->chunk_num == 0) {
-				/* a file is restored */
-				/*fprintf(stderr, "complete file %d\n", fid);*/
-				restore_files++;
-				restore_file_bytes += rfile->size;
-			}
-			assert(rfile->chunk_num >= 0);
+			read(fd, chunkhash, 20);
+			read(fd, &chunksize, 4);
+			restore_bytes += chunksize;
+			filesize += chunksize;
 		}
 
-		restore_bytes += chunk.csize;
-		int progress = restore_bytes * 100 / sys_capacity;
-		while (progress >= step && step <= 99) {
-			if (!weighted) {
-				printf("%.6f\n", 1.0*restore_files/sys_file_number);
-				fprintf(stderr, "%.6f\n", 1.0*restore_files/sys_file_number);
-			} else {
-				printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
-				fprintf(stderr, "%.6f\n", 1.0*restore_file_bytes/sys_capacity);
-			}
-			step++;
-		}
-		assert(restore_file_bytes <= sys_capacity);
+		assert(filesize > 0);
+		restore_file_bytes += filesize;
+		restore_files++;
 	}
 
-	g_hash_table_destroy(files);
 	fprintf(stderr, "restore %.4f GB\n", 1.0*restore_file_bytes/1024/1024/1024);
 
 	close(fd);
