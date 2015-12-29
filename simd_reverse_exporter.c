@@ -461,7 +461,7 @@ void file_nodedup_simd_trace(char* path, int weighted)
 			}
 			rfile->chunk_num--;
 
-			if(rfile->chunk_num == 0){
+			if (rfile->chunk_num == 0) {
 				/* a file is restored */
 				/*fprintf(stderr, "complete file %d\n", fid);*/
 				restore_files++;
@@ -472,12 +472,12 @@ void file_nodedup_simd_trace(char* path, int weighted)
 
 		restore_bytes += chunk.csize;
 		int progress = restore_bytes * 100 / sys_capacity;
-		while(progress >= step && step <= 99){
-			if(!weighted){
+		while (progress >= step && step <= 99) {
+			if (!weighted) {
 				printf("%.6f\n", 1.0*restore_files/sys_file_number);
 				fprintf(stderr, "%.6f\n", 1.0*restore_files/sys_file_number);
-			}else{
-				printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity;
+			} else {
+				printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
 				fprintf(stderr, "%.6f\n", 1.0*restore_file_bytes/sys_capacity);
 			}
 			step++;
