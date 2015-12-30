@@ -472,11 +472,12 @@ void file_nodedup_simd_trace(char* path, int weighted)
 	puts("1.0");
 }
 
-void file_dedup_simd_trace(char* path, int weighted){
-	if(weighted){
+void file_dedup_simd_trace(char* path, int weighted, char *pophashfile)
+{
+	if (weighted) {
 		printf("FILE:DEDUP:WEIGHTED\n");
 		fprintf(stderr, "FILE:DEDUP:WEIGHTED\n");
-	}else{
+	} else {
 		printf("FILE:DEDUP:NOT WEIGHTED\n");
 		fprintf(stderr, "FILE:DEDUP:NOT WEIGHTED\n");
 	}
@@ -526,8 +527,6 @@ void file_dedup_simd_trace(char* path, int weighted){
 
 	int64_t sys_file_number = get_file_number();
 
-	int fd = open(path, O_RDONLY);
-
 	/* All files lost */
 	puts("0");
 
@@ -539,23 +538,84 @@ void file_dedup_simd_trace(char* path, int weighted){
 	/* 1 - 99 */
 	int step = 1;
 
-	GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, free);
+	GHashTable* files = g_hash_table_new_full(g_int_hash, g_int_equal, 
+			NULL, free);
+	GHashTable* chunks = g_hash_table_new_full(g_int_hash, hash20_equal, 
+			free, NULL);
 
+	if (pophashfile) {
+		int popfd = open(pophashfile, O_RDONLY);
+		char pophashbuf[20];
+		while (read(popfd, pophashbuf, 20) == 20) {
+			char *pophash = malloc(20);
+			memcpy(pophash, pophashbuf, 20);
+
+			/* restoring a pop chunk */
+			memcpy(chunk.hash, pophash, 20);
+			assert(search_chunk(&chunk));
+
+			int i = 0;
+			for (;i < chunk.rcount; i++) {
+				int fid = chunk.list[chunk.rcount + i];
+				struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
+				if (!rfile) {
+					fr.fid = fid;
+					search_file(&fr);
+
+					rfile = malloc(sizeof(*rfile));
+
+					rfile->id = fid;
+					rfile->chunk_num = fr.cnum;
+					rfile->size = fr.fsize;
+
+					g_hash_table_insert(files, &rfile->id, rfile);
+				}
+				rfile->chunk_num--;
+
+				if (rfile->chunk_num == 0) {
+					/* a file is restored */
+					/*fprintf(stderr, "complete file %d\n", fid);*/
+					restore_files++;
+					restore_file_bytes += rfile->size;
+				}
+				assert(rfile->chunk_num >= 0);
+			}
+
+			restore_bytes += chunk.csize;
+			int progress = restore_bytes * 100 / psize;
+			while (progress >= step && step <= 99) {
+				if (!weighted)
+					printf("%.6f\n", 1.0*restore_files/sys_file_number);
+				else
+					printf("%.6f\n", 1.0*restore_file_bytes/lsize);
+				step++;
+			}
+
+			assert(!g_hash_table_contains(chunks, pophash));
+			g_hash_table_insert(chunks, pophash, NULL);
+		}
+		close(popfd);
+	}
+
+	int fd = open(path, O_RDONLY);
 	int byte = read(fd, &chunk.hashlen, 4);
 	assert(byte == 4);
 
-	while(1){
+	while(1) {
 		byte = read(fd, chunk.hash, chunk.hashlen);
-		if(byte != chunk.hashlen)
+		if (byte != chunk.hashlen)
 			break;
+
+		if (g_hash_table_contains(chunks, chunk.hashlen))
+			continue;
 
 		/* restore a chunk */
 		assert(search_chunk(&chunk));
 		int i = 0;
-		for(;i<chunk.rcount; i++){
+		for (;i<chunk.rcount; i++) {
 			int fid = chunk.list[chunk.rcount + i];
 			struct restoring_file* rfile = g_hash_table_lookup(files, &fid);
-			if(!rfile){
+			if (!rfile) {
 				fr.fid = fid;
 				search_file(&fr);
 
@@ -569,7 +629,7 @@ void file_dedup_simd_trace(char* path, int weighted){
 			}
 			rfile->chunk_num--;
 
-			if(rfile->chunk_num == 0){
+			if (rfile->chunk_num == 0) {
 				/* a file is restored */
 				/*fprintf(stderr, "complete file %d\n", fid);*/
 				restore_files++;
@@ -580,11 +640,11 @@ void file_dedup_simd_trace(char* path, int weighted){
 
 		restore_bytes += chunk.csize;
 		int progress = restore_bytes * 100/psize;
-		while(progress >= step && step <= 99){
-			if(!weighted){
+		while (progress >= step && step <= 99) {
+			if (!weighted) {
 				printf("%.6f\n", 1.0*restore_files/sys_file_number);
 				fprintf(stderr, "%.6f\n", 1.0*restore_files/sys_file_number);
-			}else{
+			} else {
 				printf("%.6f\n", 1.0*restore_file_bytes/lsize);
 				fprintf(stderr, "%.6f\n", 1.0*restore_file_bytes/lsize);
 			}
@@ -659,7 +719,7 @@ int main(int argc, char *argv[])
 		if (!dedup)
 			file_nodedup_simd_trace(path, weighted);
 		else
-			file_dedup_simd_trace(path, weighted);
+			file_dedup_simd_trace(path, weighted, pophashfile);
 	}
 	close_database();
 
