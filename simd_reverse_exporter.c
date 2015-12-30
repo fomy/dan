@@ -606,7 +606,7 @@ void file_dedup_simd_trace(char* path, int weighted, char *pophashfile)
 		if (byte != chunk.hashlen)
 			break;
 
-		if (g_hash_table_contains(chunks, chunk.hashlen))
+		if (g_hash_table_contains(chunks, chunk.hash))
 			continue;
 
 		/* restore a chunk */
