@@ -10,10 +10,6 @@
 #include "libhashfile.h"
 #include "store.h"
 
-#define MODEA 1
-#define MODEB 2
-#define MODEC 3
-
 static gboolean hash20_equal(gpointer a, gpointer b){
 	return !memcmp(a, b, 20);
 }
