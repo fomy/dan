@@ -253,7 +253,7 @@ static gboolean remove_and_insert(gpointer key, gpointer value,
 }
 
 /* defragmented layout by the representative fingerprint */
-void generate_similarity_based_layout(char *input, char *output)
+void generate_similarity_based_layout(char *input, char *output, reverse)
 {
 	char buf[4096];
 	struct hashfile_handle *handle;
@@ -346,26 +346,26 @@ void generate_similarity_based_layout(char *input, char *output)
 		assert(g_queue_get_length(unique_hashes) == 0);
 		g_queue_free(unique_hashes);
 
-		if (g_queue_get_length(b->hash_list) > 2048) {
-			/* too long; flush the queue to disk */
-			char fname[100];
-			sprintf(fname, "bins/tmp%d", b->binfile_id);
-			int bin_fd;
-			if (access(fname, F_OK) == 0) {
-				/* existed */
-				bin_fd = open(fname, O_WRONLY|O_APPEND);
-			} else {
-				bin_fd = open(fname, O_CREAT|O_WRONLY|O_APPEND, 
-						S_IRUSR|S_IWUSR);
-			}
-			assert(bin_fd >= 0);
+		/*if (g_queue_get_length(b->hash_list) > 2048) {*/
+		/*[> too long; flush the queue to disk <]*/
+		/*char fname[100];*/
+		/*sprintf(fname, "bins/tmp%d", b->binfile_id);*/
+		/*int bin_fd;*/
+		/*if (access(fname, F_OK) == 0) {*/
+		/*[> existed <]*/
+		/*bin_fd = open(fname, O_WRONLY|O_APPEND);*/
+		/*} else {*/
+		/*bin_fd = open(fname, O_CREAT|O_WRONLY|O_APPEND, */
+		/*S_IRUSR|S_IWUSR);*/
+		/*}*/
+		/*assert(bin_fd >= 0);*/
 
-			char *hash_elem = NULL;
-			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
-				write(bin_fd, hash_elem, 20);
-			}
-			close(bin_fd);
-		}
+		/*char *hash_elem = NULL;*/
+		/*while ((hash_elem = g_queue_pop_head(b->hash_list))) {*/
+		/*write(bin_fd, hash_elem, 20);*/
+		/*}*/
+		/*close(bin_fd);*/
+		/*}*/
 	}
 	hashfile_close(handle);
 
@@ -377,34 +377,46 @@ void generate_similarity_based_layout(char *input, char *output)
 	g_hash_table_destroy(bin_index);
 
 	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
-	int i = 0;
-	for (; i < bin_num; i++) {
 
-		char fname[100];
-		sprintf(fname, "bins/tmp%d", i);
+	if (reverse == 0) {
+		int i = 0;
+		for (; i < bin_num; i++) {
 
-		if (access(fname, F_OK) == 0) {
-			/* existed */
-			int bin_fd = open(fname, O_RDONLY);
-			char hash[20];
-			while (read(bin_fd, hash, 20) == 20) {
-				write(of, hash, 20);
-			}
+			/*char fname[100];*/
+			/*sprintf(fname, "bins/tmp%d", i);*/
 
-			close(bin_fd);
-			unlink(fname);
-		}
+			/*if (access(fname, F_OK) == 0) {*/
+			/*[> existed <]*/
+			/*int bin_fd = open(fname, O_RDONLY);*/
+			/*char hash[20];*/
+			/*while (read(bin_fd, hash, 20) == 20) {*/
+			/*write(of, hash, 20);*/
+			/*}*/
 
-		struct bin *b = g_hash_table_lookup(bid_index, &i);
+			/*close(bin_fd);*/
+			/*unlink(fname);*/
+			/*}*/
 
-		assert(b);
-		if (g_queue_get_length(b->hash_list) > 0) {
+			struct bin *b = g_hash_table_lookup(bid_index, &i);
+
+			assert(b && g_queue_get_length(b->hash_list) > 0);
 			char *hash_elem;
 			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
 				write(of, hash_elem, 20);
 			}
 		}
 
+	} else {
+		int i = bin_num - 1;
+		for (; i >= 0; i--) {
+			struct bin *b = g_hash_table_lookup(bid_index, &i);
+
+			assert(b && g_queue_get_length(b->hash_list) > 0);
+			char *hash_elem;
+			while ((hash_elem = g_queue_pop_tail(b->hash_list))) {
+				write(of, hash_elem, 20);
+			}
+		}
 	}
 	close(of);
 
@@ -415,8 +427,9 @@ void generate_similarity_based_layout(char *input, char *output)
 int main(int argc, char *argv[])
 {
 	char *input = NULL, *output = NULL;
+	int reverse = 0;
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "i:o:", NULL, NULL))
+	while ((opt = getopt_long(argc, argv, "i:o:r", NULL, NULL))
 			!= -1) {
 		switch (opt) {
 			case'i':
@@ -424,6 +437,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'o':
 				output = optarg;
+				break;
+			case 'r':
+				reverse = 1;
 				break;
 			default:
 				fprintf(stderr, "invalid option\n");
@@ -433,7 +449,7 @@ int main(int argc, char *argv[])
 
 	assert(input && output);
 
-	generate_similarity_based_layout(input, output);
+	generate_similarity_based_layout(input, output, reverse);
 
 	return 0;
 }
