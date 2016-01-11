@@ -395,7 +395,7 @@ void generate_similarity_based_layout(char *input, char *output)
 			unlink(fname);
 		}
 
-		struct bin *b = g_hash_table_lookup(&i);
+		struct bin *b = g_hash_table_lookup(bid_index, &i);
 
 		assert(b);
 		if (g_queue_get_length(b->hash_list) > 0) {
@@ -408,6 +408,7 @@ void generate_similarity_based_layout(char *input, char *output)
 	}
 	close(of);
 
+	g_hash_table_destroy(bid_index);
 	g_hash_table_destroy(fp_index);
 }
 
