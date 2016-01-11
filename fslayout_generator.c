@@ -253,7 +253,7 @@ static gboolean remove_and_insert(gpointer key, gpointer value,
 }
 
 /* defragmented layout by the representative fingerprint */
-void generate_similarity_based_layout(char *input, char *output, reverse)
+void generate_similarity_based_layout(char *input, char *output, int reverse)
 {
 	char buf[4096];
 	struct hashfile_handle *handle;
