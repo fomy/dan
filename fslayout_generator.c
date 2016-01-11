@@ -243,6 +243,15 @@ static gboolean hash20_equal(gpointer a, gpointer b){
 	return !memcmp(a, b, 20);
 }
 
+static gboolean remove_and_insert(gpointer key, gpointer value, 
+		gpointer user_data)
+{
+	struct bin *b = value;
+	GHashTable *bid_index = user_data;
+	g_hash_table_insert(bid_index, &b->binfile_id, b);
+	return TRUE;
+}
+
 /* defragmented layout by the representative fingerprint */
 void generate_similarity_based_layout(char *input, char *output)
 {
@@ -254,8 +263,7 @@ void generate_similarity_based_layout(char *input, char *output)
 	GHashTable *fp_index = g_hash_table_new_full(g_int_hash, hash20_equal,
 			free, NULL);
 	/* mapping minimal hashes to BIN files */
-	GHashTable *bin_index = g_hash_table_new_full(g_int_hash,
-			hash20_equal, NULL, free_bin);
+	GHashTable *bin_index = g_hash_table_new(g_int_hash, hash20_equal);
 
 	int bin_num = 0;
 
@@ -338,7 +346,7 @@ void generate_similarity_based_layout(char *input, char *output)
 		assert(g_queue_get_length(unique_hashes) == 0);
 		g_queue_free(unique_hashes);
 
-		if (g_queue_get_length(b->hash_list) > 1000) {
+		if (g_queue_get_length(b->hash_list) > 2048) {
 			/* too long; flush the queue to disk */
 			char fname[100];
 			sprintf(fname, "bins/tmp%d", b->binfile_id);
@@ -361,53 +369,46 @@ void generate_similarity_based_layout(char *input, char *output)
 	}
 	hashfile_close(handle);
 
-	/* iterate the bin_index */
-	GHashTableIter iter;
-	gpointer key, value;
-	g_hash_table_iter_init(&iter, bin_index);
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		struct bin *b = value;
-		assert(b->binfile_id >= 0 && b->hash_list != NULL);
-		assert(memcmp(b->minhash, key, 20) == 0);
+	GHashTable *bid_index = g_hash_table_new_full(g_int_hash,
+			g_int_equal, NULL, free_bin);
 
-		char fname[100];
-		sprintf(fname, "bins/tmp%d", b->binfile_id);
-		int bin_fd;
-		if (access(fname, F_OK) == 0) {
-			/* existed */
-			bin_fd = open(fname, O_WRONLY|O_APPEND);
-		} else {
-			bin_fd = open(fname, O_CREAT|O_WRONLY|O_APPEND, S_IRUSR|S_IWUSR);
-		}
-		assert(bin_fd >= 0);
+	g_hash_table_foreach_remove(bin_index, remove_and_insert, bid_index);
 
-		char *hash_elem = NULL;
-		while ((hash_elem = g_queue_pop_head(b->hash_list))) {
-			write(bin_fd, hash_elem, 20);
-		}
-
-		close(bin_fd);
-	}
-
-	g_hash_table_destroy(fp_index);
 	g_hash_table_destroy(bin_index);
 
 	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
 	int i = 0;
 	for (; i < bin_num; i++) {
+
 		char fname[100];
 		sprintf(fname, "bins/tmp%d", i);
-		int bin_fd = open(fname, O_RDONLY);
 
-		char hash[20];
-		while (read(bin_fd, hash, 20) == 20) {
-			write(of, hash, 20);
+		if (access(fname, F_OK) == 0) {
+			/* existed */
+			int bin_fd = open(fname, O_RDONLY);
+			char hash[20];
+			while (read(bin_fd, hash, 20) == 20) {
+				write(of, hash, 20);
+			}
+
+			close(bin_fd);
+			unlink(fname);
 		}
 
-		close(bin_fd);
-		unlink(fname);
+		struct bin *b = g_hash_table_lookup(&i);
+
+		assert(b);
+		if (g_queue_get_length(b->hash_list) > 0) {
+			char *hash_elem;
+			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
+				write(of, hash_elem, 20);
+			}
+		}
+
 	}
 	close(of);
+
+	g_hash_table_destroy(fp_index);
 }
 
 int main(int argc, char *argv[])
