@@ -181,7 +181,7 @@ void generate_backward_nodedup_layout(char *input, char *output)
 
 	int fd = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
 	if (fd < 0) {
-		fprintf(stderr, "cannot open file %s\n", reverse_file);
+		fprintf(stderr, "cannot open file %s\n", output);
 		exit(-1);
 	}
 
@@ -231,7 +231,7 @@ struct bin {
 	int binfile_id; /* not NULL; >-1 */
 	char minhash[20]; /* primary key */
 	GQueue *hash_list;
-}
+};
 
 static void free_bin(struct bin *b) 
 {
