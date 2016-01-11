@@ -244,7 +244,7 @@ static gboolean hash20_equal(gpointer a, gpointer b){
 }
 
 /* defragmented layout by the representative fingerprint */
-void generate_similarity_based_layout(char *input, char *ouput)
+void generate_similarity_based_layout(char *input, char *output)
 {
 	char buf[4096];
 	struct hashfile_handle *handle;
@@ -396,7 +396,7 @@ void generate_similarity_based_layout(char *input, char *ouput)
 	int i = 0;
 	for (; i < bin_num; i++) {
 		char fname[100];
-		fprintf(fname, "bins/tmp%d", i);
+		sprintf(fname, "bins/tmp%d", i);
 		int bin_fd = open(fname, O_RDONLY);
 
 		char hash[20];
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
 
 	assert(input && output);
 
-	generate_similarity_based_layout(input, ouput);
+	generate_similarity_based_layout(input, output);
 
 	return 0;
 }
