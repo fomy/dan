@@ -400,8 +400,8 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 			/*}*/
 
 			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			assert(b);
 
-			assert(b && g_queue_get_length(b->hash_list) > 0);
 			char *hash_elem;
 			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
 				write(of, hash_elem, 20);
@@ -412,8 +412,8 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 		int i = bin_num - 1;
 		for (; i >= 0; i--) {
 			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			assert(b);
 
-			assert(b && g_queue_get_length(b->hash_list) > 0);
 			char *hash_elem;
 			while ((hash_elem = g_queue_pop_tail(b->hash_list))) {
 				write(of, hash_elem, 20);
