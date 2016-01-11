@@ -274,6 +274,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 		exit(-1);
 	}
 
+	int hashlen = 0;
 	while (1) {
 		int ret = hashfile_next_file(handle);
 		if (ret < 0) {
@@ -308,6 +309,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 			int chunksize = ci->size;
 			memcpy(curhash, ci->hash, hashsize);
 			memcpy(&curhash[hashsize], &chunksize, sizeof(chunksize));
+			hashlen = hashsize + sizeof(chunksize);
 
 			if (memcmp(curhash, minhash, 20) < 0) {
 				memcpy(minhash, curhash, 20);
@@ -335,7 +337,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 			memcpy(b->minhash, minhash, 20);
 			b->hash_list = g_queue_new();
 
-			g_hash_table_insert(bin_index, &b->minhash, b);
+			g_hash_table_insert(bin_index, b->minhash, b);
 		}
 
 		char *hash_elem = NULL;
@@ -377,8 +379,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 	g_hash_table_destroy(bin_index);
 
 	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
-	int hashlen = 20;
-	write(of, &hashlen, sizeof(hashlen));
+	write(of, &hashlen, 4);
 
 	if (reverse == 0) {
 		int i = 0;
@@ -402,19 +403,18 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 			struct bin *b = g_hash_table_lookup(bid_index, &i);
 			assert(b);
 
-			char *hash_elem;
+			char *hash_elem = NULL;
 			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
 				write(of, hash_elem, 20);
 			}
 		}
-
 	} else {
 		int i = bin_num - 1;
 		for (; i >= 0; i--) {
 			struct bin *b = g_hash_table_lookup(bid_index, &i);
 			assert(b);
 
-			char *hash_elem;
+			char *hash_elem = NULL;
 			while ((hash_elem = g_queue_pop_tail(b->hash_list))) {
 				write(of, hash_elem, 20);
 			}
