@@ -405,7 +405,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 
 			char *hash_elem = NULL;
 			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
-				write(of, hash_elem, 20);
+				write(of, hash_elem, hashlen);
 			}
 		}
 	} else {
@@ -416,7 +416,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 
 			char *hash_elem = NULL;
 			while ((hash_elem = g_queue_pop_tail(b->hash_list))) {
-				write(of, hash_elem, 20);
+				write(of, hash_elem, hashlen);
 			}
 		}
 	}
