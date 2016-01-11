@@ -377,6 +377,8 @@ void generate_similarity_based_layout(char *input, char *output, reverse)
 	g_hash_table_destroy(bin_index);
 
 	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
+	int hashlen = 20;
+	write(of, &hashlen, sizeof(hashlen));
 
 	if (reverse == 0) {
 		int i = 0;
