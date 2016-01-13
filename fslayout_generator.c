@@ -514,7 +514,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 		int bin_id = -1;
 		GHashTableIter iter;
 		gpointer key, value;
-		g_hash_table_iter_init(&iter, &candidate_bins);
+		g_hash_table_iter_init(&iter, candidate_bins);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
 			int64_t dsize = *(int64_t*)value;
 			if (dsize > max_deduped_size) {
