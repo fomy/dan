@@ -556,7 +556,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 	if (reverse == 0) {
 		int i = 0;
 		for (; i < bin_num; i++) {
-			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			struct bin *b = g_hash_table_lookup(bin_index, &i);
 			assert(b);
 
 			char *hash_elem = NULL;
@@ -567,7 +567,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 	} else {
 		int i = bin_num - 1;
 		for (; i >= 0; i--) {
-			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			struct bin *b = g_hash_table_lookup(bin_index, &i);
 			assert(b);
 
 			char *hash_elem = NULL;
