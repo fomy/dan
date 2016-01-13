@@ -523,6 +523,8 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 			}
 		}
 
+		g_hash_table_destroy(candidate_bins);
+
 		if (bin_id == -1) {
 			/* bin not exists */
 			b = malloc(sizeof(struct bin));
