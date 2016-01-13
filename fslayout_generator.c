@@ -438,7 +438,8 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 	GHashTable *fp_index = g_hash_table_new_full(g_int_hash, hash20_equal,
 			free, NULL);
 	/* mapping minimal hashes to BIN files */
-	GHashTable *bin_index = g_hash_table_new(g_int_hash, hash20_equal);
+	GHashTable *bin_index = g_hash_table_new_full(g_int_hash, g_int_equal,
+			NULL, free_bin);
 
 	int bin_num = 0;
 
@@ -538,6 +539,9 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 		char *hash_elem = NULL;
 		while ((hash_elem = g_queue_pop_head(unique_hashes))) {
 			g_queue_push_tail(b->hash_list, hash_elem);
+			if (!g_hash_table_contains(fp_index, hash_elem)) {
+				g_hash_table_insert(fp_index, hash_elem, b);
+			}
 		}
 
 		assert(g_queue_get_length(unique_hashes) == 0);
@@ -545,13 +549,6 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 
 	}
 	hashfile_close(handle);
-
-	GHashTable *bid_index = g_hash_table_new_full(g_int_hash,
-			g_int_equal, NULL, free_bin);
-
-	g_hash_table_foreach_remove(bin_index, remove_and_insert, bid_index);
-
-	g_hash_table_destroy(bin_index);
 
 	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
 	write(of, &hashlen, 4);
@@ -581,7 +578,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 	}
 	close(of);
 
-	g_hash_table_destroy(bid_index);
+	g_hash_table_destroy(bin_index);
 	g_hash_table_destroy(fp_index);
 }
 
