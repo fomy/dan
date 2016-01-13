@@ -58,16 +58,19 @@ void analyze_references_source(unsigned int lb, unsigned int rb){
             }
             
             /* analyze files */
-            int identical = 0, min_similar = 0, similar = 0, same_suffix = 0;
             for(i=0; i<r.fcount-1; i++){
                 int j = i+1;
+            	int identical = 0, min_similar = 0, similar = 0, same_suffix = 0;
                 for(; j<r.fcount; j++){
-                    if(memcmp(files[i].hash, files[j].hash, sizeof(files[i].hash)) == 0){
+                    if(memcmp(files[i].hash, files[j].hash, 
+								sizeof(files[i].hash)) == 0){
                         identical = 1;
                         break;
-                    }else if(memcmp(files[i].minhash, files[j].minhash, sizeof(files[i].minhash)) == 0){
+                    }else if(memcmp(files[i].minhash, files[j].minhash, 
+								sizeof(files[i].minhash)) == 0){
                         min_similar = 1;
-                    }else if(memcmp(files[i].maxhash, files[j].maxhash, sizeof(files[i].maxhash)) == 0){
+                    }else if(memcmp(files[i].maxhash, files[j].maxhash, 
+								sizeof(files[i].maxhash)) == 0){
                         similar = 1;
                     }else{
                         char suf1[8];
