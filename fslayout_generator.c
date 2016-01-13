@@ -531,7 +531,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 			b = malloc(sizeof(struct bin));
 			b->bin_id = bin_num++;
 			b->hash_list = g_queue_new();
-			g_hash_table_insert(bin_index, b->bin_id, b);
+			g_hash_table_insert(bin_index, &b->bin_id, b);
 		} else {
 			b = g_hash_table_lookup(bin_index, &bin_id);
 		}
