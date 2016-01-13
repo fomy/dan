@@ -512,7 +512,7 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 		struct bin *b = NULL;
 		int64_t max_deduped_size = 0;
 		int bin_id = -1;
-		GHashTableIter *iter;
+		GHashTableIter iter;
 		gpointer key, value;
 		g_hash_table_iter_init(&iter, &candidate_bins);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
