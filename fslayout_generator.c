@@ -538,9 +538,11 @@ void generate_defragmented_layout(char *input, char *output, int reverse)
 
 		char *hash_elem = NULL;
 		while ((hash_elem = g_queue_pop_head(unique_hashes))) {
-			g_queue_push_tail(b->hash_list, hash_elem);
 			if (!g_hash_table_contains(fp_index, hash_elem)) {
 				g_hash_table_insert(fp_index, hash_elem, b);
+				g_queue_push_tail(b->hash_list, hash_elem);
+			} else {
+				free(hash_elem);
 			}
 		}
 
