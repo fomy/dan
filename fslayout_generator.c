@@ -228,7 +228,7 @@ void generate_forward_dedup_defragmented_layout(char *input, char *output)
 }
 
 struct bin {
-	int binfile_id; /* not NULL; >-1 */
+	int bin_id; /* not NULL; >-1 */
 	char minhash[20]; /* primary key */
 	GQueue *hash_list;
 };
@@ -248,11 +248,12 @@ static gboolean remove_and_insert(gpointer key, gpointer value,
 {
 	struct bin *b = value;
 	GHashTable *bid_index = user_data;
-	g_hash_table_insert(bid_index, &b->binfile_id, b);
+	g_hash_table_insert(bid_index, &b->bin_id, b);
 	return TRUE;
 }
 
 /* defragmented layout by the representative fingerprint */
+/* Extreme Binning-like method */
 void generate_similarity_based_layout(char *input, char *output, int reverse)
 {
 	char buf[4096];
@@ -333,7 +334,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 
 		if (!b) {
 			b = malloc(sizeof(struct bin));
-			b->binfile_id = bin_num++;
+			b->bin_id = bin_num++;
 			memcpy(b->minhash, minhash, 20);
 			b->hash_list = g_queue_new();
 
@@ -351,7 +352,7 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 		/*if (g_queue_get_length(b->hash_list) > 2048) {*/
 		/*[> too long; flush the queue to disk <]*/
 		/*char fname[100];*/
-		/*sprintf(fname, "bins/tmp%d", b->binfile_id);*/
+		/*sprintf(fname, "bins/tmp%d", b->bin_id);*/
 		/*int bin_fd;*/
 		/*if (access(fname, F_OK) == 0) {*/
 		/*[> existed <]*/
@@ -426,12 +427,169 @@ void generate_similarity_based_layout(char *input, char *output, int reverse)
 	g_hash_table_destroy(fp_index);
 }
 
+void generate_defragmented_layout(char *input, char *output, int reverse)
+{
+	char buf[4096];
+	struct hashfile_handle *handle;
+	const struct chunk_info *ci;
+
+	/* the fingerprint index to identify duplicate chunks */
+	/* map fingerprint to a bin */
+	GHashTable *fp_index = g_hash_table_new_full(g_int_hash, hash20_equal,
+			free, NULL);
+	/* mapping minimal hashes to BIN files */
+	GHashTable *bin_index = g_hash_table_new(g_int_hash, hash20_equal);
+
+	int bin_num = 0;
+
+	handle = hashfile_open(input);
+
+	if (!handle) {
+		fprintf(stderr, "Error opening hash file: %d!", errno);
+		exit(-1);
+	}
+
+	int hashlen = 0;
+	while (1) {
+		int ret = hashfile_next_file(handle);
+		if (ret < 0) {
+			fprintf(stderr,
+					"Cannot get next file from a hashfile: %d!\n",
+					errno);
+			exit(-1);
+		}
+		if (ret == 0)
+			break;
+
+		/* a new file; init for it */
+		/* unique_hashes: the list of unique hashes in this file */
+		GQueue *unique_hashes = g_queue_new();
+		/* bin id - deduped size */
+		GHashTable *candidate_bins = g_hash_table_new_full(g_int_hash, g_int_equal, 
+				NULL, free); 
+
+		char curhash[20];
+		memset(curhash, 0, 20);
+
+		while (1) {
+			ci = hashfile_next_chunk(handle);
+			if (!ci) /* exit the loop if it was the last chunk */
+				break;
+
+			int hashsize = hashfile_hash_size(handle)/8;
+			int chunksize = ci->size;
+			memcpy(curhash, ci->hash, hashsize);
+			memcpy(&curhash[hashsize], &chunksize, sizeof(chunksize));
+			hashlen = hashsize + sizeof(chunksize);
+
+			struct bin *b = g_hash_table_lookup(fp_index, curhash);
+			if (!b) {
+				/* an unique chunk */
+				char *newhash = malloc(20);
+				memcpy(newhash, curhash, 20);
+				g_queue_push_tail(unique_hashes, newhash);
+			} else {
+				/* a duplicate chunk */
+				int64_t *deduped_size = g_hash_table_lookup(candidate_bins, 
+						&b->bin_id);
+				if (deduped_size) {
+					*deduped_size += chunksize;
+				} else {
+					deduped_size = malloc(sizeof(int64_t));
+					*deduped_size = chunksize;
+					g_hash_table_insert(candidate_bins, &b->bin_id, deduped_size);
+				}
+			}
+		}
+
+		/* skip an empty file */
+		if (g_queue_get_length(unique_hashes) == 0) {
+			g_queue_free(unique_hashes);
+			g_hash_table_destroy(candidate_bins);
+			continue;
+		} 
+
+		struct bin *b = NULL;
+		int64_t max_deduped_size = 0;
+		int bin_id = -1;
+		GHashTableIter *iter;
+		gpointer key, value;
+		g_hash_table_iter_init(&iter, &candidate_bins);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			int64_t dsize = *(int64_t*)value;
+			if (dsize > max_deduped_size) {
+				 max_deduped_size = dsize;
+				 bin_id = *(int*)key;
+			}
+		}
+
+		if (bin_id == -1) {
+			/* bin not exists */
+			b = malloc(sizeof(struct bin));
+			b->bin_id = bin_num++;
+			b->hash_list = g_queue_new();
+			g_hash_table_insert(bin_index, b->bin_id, b);
+		} else {
+			b = g_hash_table_lookup(bin_index, &bin_id);
+		}
+
+		char *hash_elem = NULL;
+		while ((hash_elem = g_queue_pop_head(unique_hashes))) {
+			g_queue_push_tail(b->hash_list, hash_elem);
+		}
+
+		assert(g_queue_get_length(unique_hashes) == 0);
+		g_queue_free(unique_hashes);
+
+	}
+	hashfile_close(handle);
+
+	GHashTable *bid_index = g_hash_table_new_full(g_int_hash,
+			g_int_equal, NULL, free_bin);
+
+	g_hash_table_foreach_remove(bin_index, remove_and_insert, bid_index);
+
+	g_hash_table_destroy(bin_index);
+
+	int of = open(output, O_CREAT|O_WRONLY, S_IWUSR|S_IRUSR);
+	write(of, &hashlen, 4);
+
+	if (reverse == 0) {
+		int i = 0;
+		for (; i < bin_num; i++) {
+			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			assert(b);
+
+			char *hash_elem = NULL;
+			while ((hash_elem = g_queue_pop_head(b->hash_list))) {
+				write(of, hash_elem, hashlen);
+			}
+		}
+	} else {
+		int i = bin_num - 1;
+		for (; i >= 0; i--) {
+			struct bin *b = g_hash_table_lookup(bid_index, &i);
+			assert(b);
+
+			char *hash_elem = NULL;
+			while ((hash_elem = g_queue_pop_tail(b->hash_list))) {
+				write(of, hash_elem, hashlen);
+			}
+		}
+	}
+	close(of);
+
+	g_hash_table_destroy(bid_index);
+	g_hash_table_destroy(fp_index);
+}
+
 int main(int argc, char *argv[])
 {
 	char *input = NULL, *output = NULL;
 	int reverse = 0;
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "i:o:r", NULL, NULL))
+	int minhash = 0;
+	while ((opt = getopt_long(argc, argv, "i:o:rm", NULL, NULL))
 			!= -1) {
 		switch (opt) {
 			case'i':
@@ -443,6 +601,9 @@ int main(int argc, char *argv[])
 			case 'r':
 				reverse = 1;
 				break;
+			case 'm':
+				minhash = 1;
+				break;
 			default:
 				fprintf(stderr, "invalid option\n");
 				return -1;
@@ -451,7 +612,10 @@ int main(int argc, char *argv[])
 
 	assert(input && output);
 
-	generate_similarity_based_layout(input, output, reverse);
+	if (minhash)
+		generate_similarity_based_layout(input, output, reverse);
+	else
+		generate_defragmented_layout(input, output, reverse);
 
 	return 0;
 }
