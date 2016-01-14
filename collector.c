@@ -58,7 +58,7 @@ static char* parse_file_name(char *path){
 	return &path[i+1];
 }
 
-static int read_hashfile(char *hashfile_name, int count)
+static int read_hashfile(char **hashfile_name, int count)
 {
 	char buf[MAXLINE];
 	struct hashfile_handle *handle;
