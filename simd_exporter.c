@@ -28,7 +28,7 @@ static void print_a_chunk(int chunksize, int64_t content){
 
 /* there is no trace for chunk-level with dedup */
 /* Fixed-sized file system block of 8 KB if weighted */
-void chunk_nodedup_simd_trace(char *path, int weighted){
+void chunk_nodedup_simd_trace(char **path, int count,  int weighted){
 	if (weighted) {
 		fprintf(stderr, "CHUNK:NO DEDUP:WEIGHTED\n");
 		printf("CHUNK:NO DEDUP:WEIGHTED\n");
@@ -67,7 +67,7 @@ void chunk_nodedup_simd_trace(char *path, int weighted){
  * Dedup
  * (no trace for chunk-level no-dedup model)
  */
-void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
+void chunk_dedup_simd_trace(char **path, int count, int weighted, char *pophashfile)
 {
 	if (weighted) {
 		fprintf(stderr, "CHUNK:DEDUP:WEIGHTED\n");
@@ -121,13 +121,6 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 	struct hashfile_handle *handle;
 	const struct chunk_info *ci;
 
-	handle = hashfile_open(path);
-
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		exit(-1);
-	}
-
 	int64_t restore_logical_bytes = 0;
 	int64_t restore_physical_bytes = 0;
 	int64_t restore_chunks = 0;
@@ -176,56 +169,67 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 		close(popfd);
 	}
 
-	while (1) {
-		int ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+	int pc = 0;
+	for (; pc < count; pc++) {
+		handle = hashfile_open(path[pc]);
+
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			exit(-1);
 		}
-		if (ret == 0)
-			break;
+
 
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			int ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				exit(-1);
+			}
+			if (ret == 0)
 				break;
 
-			int hashsize = hashfile_hash_size(handle)/8;
-			int chunksize = ci->size;
-			memcpy(chunk.hash, ci->hash, hashsize);
-			memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-			chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
 
-			if (!g_hash_table_contains(chunks, chunk.hash)) {
-				assert(search_chunk(&chunk));
-				int64_t sum = chunk.csize;
-				sum *= chunk.rcount;
-				restore_chunks += chunk.rcount;
+				int hashsize = hashfile_hash_size(handle)/8;
+				int chunksize = ci->size;
+				memcpy(chunk.hash, ci->hash, hashsize);
+				memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+				chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
-				restore_physical_bytes += chunk.csize;
-				restore_logical_bytes += sum;
+				if (!g_hash_table_contains(chunks, chunk.hash)) {
+					assert(search_chunk(&chunk));
+					int64_t sum = chunk.csize;
+					sum *= chunk.rcount;
+					restore_chunks += chunk.rcount;
 
-				int progress = restore_physical_bytes * 100/psize;
-				while (progress >= step && step <= 99) {
-					if (weighted) {
-						printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
-						fprintf(stderr, "%.6f\n", 1.0*restore_logical_bytes/lsize);
-					} else {
-						printf("%.6f\n", 1.0*restore_chunks/total_chunks);
-						fprintf(stderr, "%.6f\n", 1.0*restore_chunks/total_chunks);
+					restore_physical_bytes += chunk.csize;
+					restore_logical_bytes += sum;
+
+					int progress = restore_physical_bytes * 100/psize;
+					while (progress >= step && step <= 99) {
+						if (weighted) {
+							printf("%.6f\n", 1.0*restore_logical_bytes/lsize);
+							fprintf(stderr, "%.6f\n", 1.0*restore_logical_bytes/lsize);
+						} else {
+							printf("%.6f\n", 1.0*restore_chunks/total_chunks);
+							fprintf(stderr, "%.6f\n", 1.0*restore_chunks/total_chunks);
+						}
+						step++;
 					}
-					step++;
+					char* hash = malloc(20);
+					memcpy(hash, chunk.hash, 20);
+					g_hash_table_insert(chunks, hash, NULL);
 				}
-				char* hash = malloc(20);
-				memcpy(hash, chunk.hash, 20);
-				g_hash_table_insert(chunks, hash, NULL);
 			}
 		}
+		hashfile_close(handle);
 	}
 	g_hash_table_destroy(chunks);
-	hashfile_close(handle);
 
 	puts("1.0");
 }
@@ -234,7 +238,7 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
  * File level, no dedup
  * weighted by size?
  */
-void file_nodedup_simd_trace(char *path, int weighted)
+void file_nodedup_simd_trace(char **path, int count,  int weighted)
 {
 	if (weighted) {
 		printf("FILE:NO DEDUP:WEIGHTED\n");
@@ -287,14 +291,6 @@ void file_nodedup_simd_trace(char *path, int weighted)
 	char buf[4096];
 	struct hashfile_handle *handle;
 	const struct chunk_info *ci;
-
-	handle = hashfile_open(path);
-
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		exit(-1);
-	}
-
 	/* RAID Failure part */
 	/* All files lost */
 	puts("0");
@@ -305,52 +301,63 @@ void file_nodedup_simd_trace(char *path, int weighted)
 
 	/* 1 - 99 */
 	int step = 1;
-	while (1) {
-		int ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+
+	int pc = 0;
+	for (; pc < count; pc++) {
+		handle = hashfile_open(path[pc]);
+
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			exit(-1);
 		}
-		if (ret == 0)
-			break;
 
-		int64_t filesize = 0;
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			int ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				exit(-1);
+			}
+			if (ret == 0)
 				break;
 
-			int progress = restore_bytes * 100 / sys_capacity;
-			while(progress >= step && step <= 99){
-				if(!weighted)
-					printf("%.6f\n", 1.0*restore_files/sys_file_number);
-				else
-					printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
-				step++;
+			int64_t filesize = 0;
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
+
+				int progress = restore_bytes * 100 / sys_capacity;
+				while(progress >= step && step <= 99){
+					if(!weighted)
+						printf("%.6f\n", 1.0*restore_files/sys_file_number);
+					else
+						printf("%.6f\n", 1.0*restore_file_bytes/sys_capacity);
+					step++;
+				}
+
+				/* It will overflow */
+				/*restore_bytes += ci->size;*/
+				int size = ci->size;
+				restore_bytes += size;
+				filesize += size;
 			}
 
-			/* It will overflow */
-			/*restore_bytes += ci->size;*/
-			int size = ci->size;
-			restore_bytes += size;
-			filesize += size;
+			/*if(filesize != hashfile_curfile_size(handle))*/
+			/*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+			/*else*/
+			/*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
+			if(filesize == 0)
+				continue;
+
+			restore_files++;
+			restore_file_bytes += filesize;
+
 		}
 
-		/*if(filesize != hashfile_curfile_size(handle))*/
-		/*printf("%"PRId64" is not %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
-		/*else*/
-		/*printf("%"PRId64" == %"PRIu64"\n", filesize, hashfile_curfile_size(handle));*/
-		if(filesize == 0)
-			continue;
-
-		restore_files++;
-		restore_file_bytes += filesize;
-
+		hashfile_close(handle);
 	}
-
-	hashfile_close(handle);
 	puts("1.0");
 }
 
@@ -360,7 +367,7 @@ struct restoring_file{
 	int64_t size;
 };
 
-void file_dedup_simd_trace(char* path, int weighted, char *pophashfile)
+void file_dedup_simd_trace(char** path, int count,  int weighted, char *pophashfile)
 {
 	if (weighted) {
 		printf("FILE:DEDUP:WEIGHTED\n");
@@ -418,13 +425,6 @@ void file_dedup_simd_trace(char* path, int weighted, char *pophashfile)
 	const struct chunk_info *ci;
 
 	int64_t sys_file_number = get_file_number();
-
-	handle = hashfile_open(path);
-
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		exit(-1);
-	}
 
 	/* All files lost */
 	puts("0");
@@ -496,81 +496,93 @@ void file_dedup_simd_trace(char* path, int weighted, char *pophashfile)
 		close(popfd);
 	}
 
-	while (1) {
-		int ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+	int pc = 0;
+	for (; pc < count; pc++) {
+
+		handle = hashfile_open(path[pc]);
+
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			exit(-1);
 		}
-		if (ret == 0)
-			break;
 
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			int ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				exit(-1);
+			}
+			if (ret == 0)
 				break;
 
-			int hashsize = hashfile_hash_size(handle)/8;
-			int chunksize = ci->size;
-			memcpy(chunk.hash, ci->hash, hashsize);
-			memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
-			chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
 
-			if (!g_hash_table_contains(chunks, chunk.hash)) {
-				/* restore a chunk */
-				assert(search_chunk(&chunk));
-				int i = 0;
-				for (; i < chunk.rcount; i++) {
-					int fid = chunk.list[chunk.rcount + i];
-					struct restoring_file* rfile = 
-						g_hash_table_lookup(files, &fid);
-					if (!rfile) {
-						fr.fid = fid;
-						search_file(&fr);
+				int hashsize = hashfile_hash_size(handle)/8;
+				int chunksize = ci->size;
+				memcpy(chunk.hash, ci->hash, hashsize);
+				memcpy(&chunk.hash[hashsize], &chunksize, sizeof(chunksize));
+				chunk.hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
-						rfile = malloc(sizeof(*rfile));
+				if (!g_hash_table_contains(chunks, chunk.hash)) {
+					/* restore a chunk */
+					assert(search_chunk(&chunk));
+					int i = 0;
+					for (; i < chunk.rcount; i++) {
+						int fid = chunk.list[chunk.rcount + i];
+						struct restoring_file* rfile = 
+							g_hash_table_lookup(files, &fid);
+						if (!rfile) {
+							fr.fid = fid;
+							search_file(&fr);
 
-						rfile->id = fid;
-						rfile->chunk_num = fr.cnum;
-						rfile->size = fr.fsize;
+							rfile = malloc(sizeof(*rfile));
 
-						g_hash_table_insert(files, &rfile->id, rfile);
+							rfile->id = fid;
+							rfile->chunk_num = fr.cnum;
+							rfile->size = fr.fsize;
+
+							g_hash_table_insert(files, &rfile->id, rfile);
+						}
+						rfile->chunk_num--;
+
+						if(rfile->chunk_num == 0){
+							/* a file is restored */
+							/*fprintf(stderr, "complete file %d\n", fid);*/
+							restore_files++;
+							restore_file_bytes += rfile->size;
+						}
+						assert(rfile->chunk_num >= 0);
 					}
-					rfile->chunk_num--;
 
-					if(rfile->chunk_num == 0){
-						/* a file is restored */
-						/*fprintf(stderr, "complete file %d\n", fid);*/
-						restore_files++;
-						restore_file_bytes += rfile->size;
+					restore_bytes += chunk.csize;
+					int progress = restore_bytes * 100/psize;
+					while (progress >= step && step <= 99) {
+						if (!weighted)
+							printf("%.6f\n", 1.0*restore_files/sys_file_number);
+						else
+							printf("%.6f\n", 1.0*restore_file_bytes/lsize);
+						step++;
 					}
-					assert(rfile->chunk_num >= 0);
+					char* hash = malloc(20);
+					memcpy(hash, chunk.hash, 20);
+					g_hash_table_insert(chunks, hash, hash);
 				}
-
-				restore_bytes += chunk.csize;
-				int progress = restore_bytes * 100/psize;
-				while (progress >= step && step <= 99) {
-					if (!weighted)
-						printf("%.6f\n", 1.0*restore_files/sys_file_number);
-					else
-						printf("%.6f\n", 1.0*restore_file_bytes/lsize);
-					step++;
-				}
-				char* hash = malloc(20);
-				memcpy(hash, chunk.hash, 20);
-				g_hash_table_insert(chunks, hash, hash);
 			}
 		}
+
+		hashfile_close(handle);
 	}
+	puts("1.0");
 
 	g_hash_table_destroy(files);
 	g_hash_table_destroy(chunks);
 	fprintf(stderr, "restore %.4f GB\n", 1.0*restore_file_bytes/1024/1024/1024);
 
-	hashfile_close(handle);
-	puts("1.0");
 }
 
 int main(int argc, char *argv[])
@@ -608,17 +620,16 @@ int main(int argc, char *argv[])
 
 	open_database();
 
-	char *path = argv[optind];
 	if (!file_level) {
 		if (!dedup)
-			chunk_nodedup_simd_trace(path, weighted);
+			chunk_nodedup_simd_trace(&argv[optind], argc - optind,  weighted);
 		else
-			chunk_dedup_simd_trace(path, weighted, pophash);
+			chunk_dedup_simd_trace(&argv[optind], argc - optind, weighted, pophash);
 	} else {
 		if (!dedup)
-			file_nodedup_simd_trace(path, weighted);
+			file_nodedup_simd_trace(&argv[optind], argc - optind, weighted);
 		else
-			file_dedup_simd_trace(path, weighted, pophash);
+			file_dedup_simd_trace(&argv[optind], argc - optind, weighted, pophash);
 	}
 	close_database();
 
