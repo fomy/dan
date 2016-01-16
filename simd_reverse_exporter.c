@@ -33,7 +33,7 @@ static void print_a_chunk(int chunksize, int64_t content){
 }
 
 /* file layout without dedup in backward case */
-void reverse_trace(char *path, char* reverse_file)
+void reverse_trace(char **path, int count,  char* reverse_file)
 {
 	char buf[4096];
 	struct hashfile_handle *handle;
@@ -42,69 +42,72 @@ void reverse_trace(char *path, char* reverse_file)
 	int cf_id = -1;/* the current file id */
 	int cf_cnum = 0;/* the chunk number */
 
-	handle = hashfile_open(path);
-
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		exit(-1);
-	}
-
 	GSequence *hashqueue = g_sequence_new(free);
 
-	char hash[20];
-	memset(hash, 0, 20);
-	while (1) {
-		int ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+	int pc = 0;
+	for (; pc < count; pc++) {
+		handle = hashfile_open(path);
+
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			exit(-1);
 		}
-		if (ret == 0)
-			break;
 
-		cf_id++;
-
-		int *fid = malloc(sizeof(*fid));
-		*fid = cf_id;
-		g_sequence_prepend(hashqueue, fid);
-
-		/*fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), */
-				/*hashfile_curfile_size(handle));*/
+		char hash[20];
+		memset(hash, 0, 20);
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			int ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				exit(-1);
+			}
+			if (ret == 0)
 				break;
 
-			cf_cnum++;
+			cf_id++;
 
-			int hashsize = hashfile_hash_size(handle)/8;
-			int chunksize = ci->size;
-			memcpy(hash, ci->hash, hashsize);
-			memcpy(&hash[hashsize], &chunksize, sizeof(chunksize));
+			int *fid = malloc(sizeof(*fid));
+			*fid = cf_id;
+			g_sequence_prepend(hashqueue, fid);
 
-			char* newhash = malloc(20 + sizeof(chunksize));
-			memcpy(newhash, hash, 20);
-			memcpy(newhash + 20, &chunksize, sizeof(chunksize));
-			g_sequence_prepend(hashqueue, newhash);
+			/*fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), */
+			/*hashfile_curfile_size(handle));*/
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
+
+				cf_cnum++;
+
+				int hashsize = hashfile_hash_size(handle)/8;
+				int chunksize = ci->size;
+				memcpy(hash, ci->hash, hashsize);
+				memcpy(&hash[hashsize], &chunksize, sizeof(chunksize));
+
+				char* newhash = malloc(20 + sizeof(chunksize));
+				memcpy(newhash, hash, 20);
+				memcpy(newhash + 20, &chunksize, sizeof(chunksize));
+				g_sequence_prepend(hashqueue, newhash);
+			}
+
+			if (cf_cnum == 0) {
+				/* empty file excluded */
+				g_sequence_remove(g_sequence_get_begin_iter(hashqueue));
+				cf_id--;
+				continue;
+			}
+
+			char *fend = malloc(sizeof(int) + sizeof(int));
+			memcpy(fend, &cf_id, sizeof(int));
+			memcpy(fend + sizeof(int), &cf_cnum, sizeof(int));
+			g_sequence_prepend(hashqueue, fend);
+
+			cf_cnum = 0;
 		}
-
-		if (cf_cnum == 0) {
-			/* empty file excluded */
-			g_sequence_remove(g_sequence_get_begin_iter(hashqueue));
-			cf_id--;
-			continue;
-		}
-
-		char *fend = malloc(sizeof(int) + sizeof(int));
-		memcpy(fend, &cf_id, sizeof(int));
-		memcpy(fend + sizeof(int), &cf_cnum, sizeof(int));
-		g_sequence_prepend(hashqueue, fend);
-
-		cf_cnum = 0;
+		hashfile_close(handle);
 	}
-	hashfile_close(handle);
 
 	fprintf(stderr, "queue size = %d\n", g_sequence_get_length(hashqueue));
 
@@ -143,59 +146,62 @@ void reverse_trace(char *path, char* reverse_file)
 	g_sequence_free(hashqueue);
 }
 
-void reverse_trace_dedup(char *path, char* reverse_file) 
+void reverse_trace_dedup(char **path, int count, char* reverse_file) 
 {
 	char buf[4096];
 	struct hashfile_handle *handle;
 	const struct chunk_info *ci;
 
-	handle = hashfile_open(path);
-
-	if (!handle) {
-		fprintf(stderr, "Error opening hash file: %d!", errno);
-		exit(-1);
-	}
-
 	GHashTable* hashes = g_hash_table_new_full(g_int_hash, hash20_equal, 
 			NULL, NULL);
 	GSequence *hashqueue = g_sequence_new(free);
 
-	char hash[20];
-	memset(hash, 0, 20);
-	int hashlen = 0;
-	while (1) {
-		int ret = hashfile_next_file(handle);
-		if (ret < 0) {
-			fprintf(stderr,
-					"Cannot get next file from a hashfile: %d!\n",
-					errno);
+	int pc = 0;
+	for (; pc < count; pc++) {
+		handle = hashfile_open(path);
+
+		if (!handle) {
+			fprintf(stderr, "Error opening hash file: %d!", errno);
 			exit(-1);
 		}
-		if (ret == 0)
-			break;
 
-		fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), 
-				hashfile_curfile_size(handle));
-
+		char hash[20];
+		memset(hash, 0, 20);
+		int hashlen = 0;
 		while (1) {
-			ci = hashfile_next_chunk(handle);
-			if (!ci) /* exit the loop if it was the last chunk */
+			int ret = hashfile_next_file(handle);
+			if (ret < 0) {
+				fprintf(stderr,
+						"Cannot get next file from a hashfile: %d!\n",
+						errno);
+				exit(-1);
+			}
+			if (ret == 0)
 				break;
-			int hashsize = hashfile_hash_size(handle)/8;
-			int chunksize = ci->size;
-			memcpy(hash, ci->hash, hashsize);
-			memcpy(&hash[hashsize], &chunksize, sizeof(chunksize));
-			hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
 
-			if (!g_hash_table_contains(hashes, hash)) {
-				char* newhash = malloc(20);
-				memcpy(newhash, hash, 20);
-				g_sequence_prepend(hashqueue, newhash);
-				g_hash_table_insert(hashes, newhash, NULL);
+			fprintf(stderr, "%s, %"PRIu64"\n", hashfile_curfile_path(handle), 
+					hashfile_curfile_size(handle));
+
+			while (1) {
+				ci = hashfile_next_chunk(handle);
+				if (!ci) /* exit the loop if it was the last chunk */
+					break;
+				int hashsize = hashfile_hash_size(handle)/8;
+				int chunksize = ci->size;
+				memcpy(hash, ci->hash, hashsize);
+				memcpy(&hash[hashsize], &chunksize, sizeof(chunksize));
+				hashlen = hashfile_hash_size(handle)/8 + sizeof(chunksize);
+
+				if (!g_hash_table_contains(hashes, hash)) {
+					char* newhash = malloc(20);
+					memcpy(newhash, hash, 20);
+					g_sequence_prepend(hashqueue, newhash);
+					g_hash_table_insert(hashes, newhash, NULL);
+				}
 			}
 		}
+		hashfile_close(handle);
 	}
-	hashfile_close(handle);
 
 	g_hash_table_destroy(hashes);
 
@@ -436,7 +442,7 @@ void file_nodedup_simd_trace(char* path, int weighted)
 
 		memcpy(&cf_id, fstart, 4);
 		memcpy(&cf_cnum, fstart + 4, 4);
-		
+
 		int64_t filesize = 0;
 		int i = 0;
 		char chunkhash[20];
@@ -705,9 +711,9 @@ int main(int argc, char *argv[])
 
 	if (reverse) {
 		if (dedup == 0)
-			reverse_trace(path, reverse_file);
+			reverse_trace(&argv[optind], argc - optind,  reverse_file);
 		else
-			reverse_trace_dedup(path, reverse_file);
+			reverse_trace_dedup(&argv[optind], argc - optind,  reverse_file);
 		return 0;
 	}
 
