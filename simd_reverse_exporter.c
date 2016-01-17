@@ -13,10 +13,6 @@
 #include "libhashfile.h"
 #include "store.h"
 
-#define MODEA 1
-#define MODEB 2
-#define MODEC 3
-
 static gboolean hash20_equal(gpointer a, gpointer b){
 	return !memcmp(a, b, 20);
 }
@@ -156,6 +152,8 @@ void reverse_trace_dedup(char **path, int count, char* reverse_file)
 			NULL, NULL);
 	GSequence *hashqueue = g_sequence_new(free);
 
+	int hashlen = 0;
+
 	int pc = 0;
 	for (; pc < count; pc++) {
 		handle = hashfile_open(path);
@@ -167,7 +165,6 @@ void reverse_trace_dedup(char **path, int count, char* reverse_file)
 
 		char hash[20];
 		memset(hash, 0, 20);
-		int hashlen = 0;
 		while (1) {
 			int ret = hashfile_next_file(handle);
 			if (ret < 0) {
@@ -269,7 +266,8 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 	}
 
 	printf("%.6f\n", 1.0*lsize/psize);
-	fprintf(stderr, "D/F = %.4f, total_chunks = %"PRId64"\n", 1.0*lsize/psize, total_chunks);
+	fprintf(stderr, "D/F = %.4f, total_chunks = %"PRId64"\n", 
+            1.0*lsize/psize, total_chunks);
 
 	close_iterator();
 
