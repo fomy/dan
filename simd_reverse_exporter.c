@@ -42,7 +42,7 @@ void reverse_trace(char **path, int count,  char* reverse_file)
 
 	int pc = 0;
 	for (; pc < count; pc++) {
-		handle = hashfile_open(path);
+		handle = hashfile_open(path[pc]);
 
 		if (!handle) {
 			fprintf(stderr, "Error opening hash file: %d!", errno);
@@ -156,7 +156,7 @@ void reverse_trace_dedup(char **path, int count, char* reverse_file)
 
 	int pc = 0;
 	for (; pc < count; pc++) {
-		handle = hashfile_open(path);
+		handle = hashfile_open(path[pc]);
 
 		if (!handle) {
 			fprintf(stderr, "Error opening hash file: %d!", errno);
