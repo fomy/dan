@@ -118,7 +118,7 @@ void reverse_trace(char **path, int count,  char* reverse_file)
 		/* fend */
 		char * fend = g_sequence_get(iter);
 		/* id and chunk number */
-		write(fd, fend, 8);
+		assert(write(fd, fend, 8) == 8);
 		memcpy(&cf_id, fend, sizeof(cf_id));
 		memcpy(&cf_cnum, fend + 4, sizeof(cf_cnum));
 
@@ -126,13 +126,13 @@ void reverse_trace(char **path, int count,  char* reverse_file)
 		int i = 0;
 		for (; i < cf_cnum; i++) {
 			iter = g_sequence_iter_next(iter);
-			write(fd, g_sequence_get(iter), 24);
+			assert(write(fd, g_sequence_get(iter), 24) == 24);
 		}
 
 		/* fid */
 		iter = g_sequence_iter_next(iter);
 		int *tmpfid = g_sequence_get(iter);
-		write(fd, tmpfid, sizeof(int));
+		assert(write(fd, tmpfid, sizeof(int)) == sizeof(int));
 		assert(memcmp(tmpfid, &cf_id, sizeof(int)) == 0);
 
 		iter = g_sequence_iter_next(iter);
@@ -211,12 +211,12 @@ void reverse_trace_dedup(char **path, int count, char* reverse_file)
 	}
 
 	fprintf(stderr, "hashlen = %d\n", hashlen);
-	write(fd, &hashlen, sizeof(hashlen));
+	assert(write(fd, &hashlen, sizeof(hashlen)) == sizeof(hashlen));
 	char* nexthash = NULL;
 
 	GSequenceIter *iter = g_sequence_get_begin_iter(hashqueue);
 	while(!g_sequence_iter_is_end(iter)){
-		write(fd, g_sequence_get(iter), hashlen);
+		assert(write(fd, g_sequence_get(iter), hashlen) == hashlen);
 		iter = g_sequence_iter_next(iter);
 	}
 
