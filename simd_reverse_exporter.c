@@ -248,6 +248,8 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 	int64_t lsize = 0;
 	int64_t total_chunks = 0;
 	/* USE part */
+	int64_t sum4mean = 0;
+	int64_t count4mean = 0;
 	while (iterate_chunk(&chunk, 0) == 0) {
 
 		int64_t sum = chunk.csize;
@@ -259,8 +261,12 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 		total_chunks += chunk.rcount;
 
 		if (weighted) {
+			sum4mean += sum * chunk.csize;
+			count4mean += chunk.csize;
 			print_a_chunk(chunk.csize, sum);
 		} else {
+			sum4mean += sum; 
+			count4mean += chunk.csize;
 			print_a_chunk(chunk.csize, chunk.rcount);
 		}
 	}
@@ -268,6 +274,8 @@ void chunk_dedup_simd_trace(char *path, int weighted, char *pophashfile)
 	printf("%.6f\n", 1.0*lsize/psize);
 	fprintf(stderr, "D/F = %.4f, total_chunks = %"PRId64"\n", 
             1.0*lsize/psize, total_chunks);
+	fprintf(stderr, "mean = %.4f, per DF = %.6f\n", 1.0*sum4mean/count4mean, 
+			1.0*sum4mean*psize/count4mean/lsize);
 
 	close_iterator();
 
