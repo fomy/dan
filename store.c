@@ -238,9 +238,13 @@ void update_chunk(struct chunk_rec *r){
             if(chunk->rcount == 2 || chunk->rcount == 3){
                 chunk->list_size = chunk->rcount * 2;
                 chunk->list = malloc(sizeof(int) * chunk->list_size);
-            } else {
+            } else if (chunk->list_size < 65536) {
                 chunk->list_size = chunk->list_size * 2;
                 assert(chunk->list_size > chunk->rcount * 2);
+                chunk->list = malloc(sizeof(int) * chunk->list_size);
+                assert(chunk->list != NULL);
+            } else {
+                chunk->list_size += 65536;
                 chunk->list = malloc(sizeof(int) * chunk->list_size);
                 assert(chunk->list != NULL);
             }
